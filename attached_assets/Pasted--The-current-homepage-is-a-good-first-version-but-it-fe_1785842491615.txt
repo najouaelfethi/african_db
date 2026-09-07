@@ -1,0 +1,199 @@
+
+
+
+
+The current homepage is a good first version, but it feels too empty and does not immediately communicate the value of the platform. **Do not redesign the application or change the existing design system.** Keep the same blue color palette, sidebar, typography, and component style.
+
+
+
+Improve the homepage to create a more engaging and professional user experience similar to modern scientific research platforms.
+
+
+
+### Hero Section
+
+
+
+* Keep the title **African Air Database**.
+
+* Keep the introduction text.
+
+* Add a modern illustration or subtle background related to Africa, air quality, environmental monitoring, or scientific research (avoid distracting graphics).
+
+* Keep the **Explore Map** and **Browse Research** buttons.
+
+* Add subtle animations (fade-in or hover effects only).
+
+
+
+### Statistics
+
+
+
+Improve the statistics cards:
+
+
+
+* Add meaningful icons.
+
+* Make the numbers more visually prominent.
+
+* Add a short description under each statistic.
+
+* Animate the counters when the page loads.
+
+
+
+### Quick Access
+
+
+
+Below the statistics, add a **Quick Access** section with large clickable cards:
+
+
+
+* 🌍 Explore Map
+
+* 🔍 Advanced Search
+
+* 🧪 Pollutants
+
+* 📊 Analytics
+
+
+
+Each card should include:
+
+
+
+* icon
+
+* title
+
+* one-line description
+
+* hover animation
+
+* navigation to the corresponding page
+
+
+
+### Featured Categories
+
+
+
+Create another section displaying the main dataset categories as modern cards:
+
+
+
+* Particulate Matter
+
+* Gases
+
+* Campaigns
+
+* Modeling & Remote Sensing
+
+* Observatories
+
+
+
+Each card should show:
+
+
+
+* category icon
+
+* short description
+
+* number of studies (from current dataset)
+
+* "Explore" button
+
+
+
+### Map Preview
+
+
+
+Add a section called **Explore Research Across Africa**.
+
+
+
+Instead of displaying the full interactive map, show a preview of the Africa map with a button that opens the complete interactive map.
+
+
+
+Add a short description explaining that users can discover studies geographically.
+
+
+
+### Latest Research
+
+
+
+Display a small section with the most recent publications from the dataset.
+
+
+
+Each card should include:
+
+
+
+* title
+
+* country
+
+* publication year
+
+* pollutant
+
+* View Details button
+
+
+
+### Contact & Footer
+
+
+
+Create a clean footer including:
+
+
+
+* African Air Database
+
+* African Research Center on Air Quality and Climate (UM6P)
+
+* Contact email:
+
+  **[africanairdatabase@um6p.ma](mailto:africanairdatabase@um6p.ma)**
+
+* Copyright
+
+* Social/media placeholders
+
+
+
+### Design Guidelines
+
+
+
+* Maintain the existing blue design system.
+
+* Keep the same sidebar.
+
+* Do not modify existing routing.
+
+* Reuse existing React components whenever possible.
+
+* Use smooth spacing and improve visual hierarchy.
+
+* Increase readability with slightly larger headings and better spacing.
+
+* Ensure the homepage looks professional, modern, and suitable for researchers and policymakers rather than a generic dashboard.
+
+* Use the existing dataset wherever possible instead of placeholder values.
+
+
+
+The final result should feel like the homepage of a professional scientific data platform while remaining fully consistent with the rest of the application.
