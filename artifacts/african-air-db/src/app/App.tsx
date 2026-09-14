@@ -3,6 +3,7 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import africaGeoJSON from "./data/africa-countries.json";
 import reunionGeoJSON from "./data/reunion.json";
+import arcairStudiesData from "./data/arcair-studies.json";
 import arcairLogo from "../assets/arcair-logo.png";
 import {
   Home,
@@ -24,9 +25,14 @@ import {
   getDatasetStats,
   getPollutantsByCategory,
   getSettings,
-  getStudyById
+  getStudyById,
 } from "./services/studyService";
-import type { CountrySummary, AreaSummary, StudyFilters, PollutantInfo } from "./types/arcair";
+import type {
+  CountrySummary,
+  AreaSummary,
+  StudyFilters,
+  PollutantInfo,
+} from "./types/arcair";
 import { useAsync } from "./hooks/useData";
 
 import SearchPage from "./SearchPage";
@@ -75,7 +81,14 @@ const MAP_CONFIG = {
 const MOROCCO_ID = "504";
 
 // Small islands use their real GeoJSON polygons and zoom in when selected.
-const SMALL_ISLAND_IDS = new Set(["132", "678", "174", "690", "480", "reunion"]);
+const SMALL_ISLAND_IDS = new Set([
+  "132",
+  "678",
+  "174",
+  "690",
+  "480",
+  "reunion",
+]);
 
 const ADMIN_FAKE_USERS = [
   {
@@ -101,7 +114,7 @@ const ADMIN_FAKE_USERS = [
     region: "Senegal",
     status: "Pending",
     lastSeen: "1h ago",
-  }
+  },
 ];
 
 const ADMIN_FAKE_TASKS = [
@@ -149,11 +162,62 @@ const isUM6PEmail = (v: string) => v.trim().toLowerCase().endsWith("@um6p.ma");
 const UM6P_PASSWORD = "um6p2024";
 
 const AFRICA_COUNTRY_IDS = new Set([
-  "012", "024", "204", "072", "854", "108", "120", "132", "140", "148", "174", "178", "180", "384", "262", "818", "226", "232", "748", "231", "266", "270", "288", "324", "624", "404", "426", "430", "434", "450", "454", "466", "478", "480", "504", "508", "516", "562", "566", "646", "678", "686", "690", "694", "706", "710", "728", "729", "732", "834", "768", "788", "800", "894", "716",
+  "012",
+  "024",
+  "204",
+  "072",
+  "854",
+  "108",
+  "120",
+  "132",
+  "140",
+  "148",
+  "174",
+  "178",
+  "180",
+  "384",
+  "262",
+  "818",
+  "226",
+  "232",
+  "748",
+  "231",
+  "266",
+  "270",
+  "288",
+  "324",
+  "624",
+  "404",
+  "426",
+  "430",
+  "434",
+  "450",
+  "454",
+  "466",
+  "478",
+  "480",
+  "504",
+  "508",
+  "516",
+  "562",
+  "566",
+  "646",
+  "678",
+  "686",
+  "690",
+  "694",
+  "706",
+  "710",
+  "728",
+  "729",
+  "732",
+  "834",
+  "768",
+  "788",
+  "800",
+  "894",
+  "716",
 ]);
-
-
-
 
 function normalizeCountryId(id: string | number | undefined) {
   return String(id ?? "").padStart(3, "0");
@@ -164,7 +228,7 @@ function getCountryStyle(
   selectedCountryId: string,
   useChoropleth: boolean,
   countriesWithStudies: Set<string>,
-  countryStudyCounts: Map<string, number>
+  countryStudyCounts: Map<string, number>,
 ): L.PathOptions {
   const countryId = rawId;
   const selected = countryId === selectedCountryId;
@@ -264,7 +328,10 @@ function clusterCities(cities: AreaSummary[], zoom: number): CityCluster[] {
     }
 
     const nextCities = [...match.cities, city];
-    const nextTotal = nextCities.reduce((sum, item) => sum + item.studyCount, 0);
+    const nextTotal = nextCities.reduce(
+      (sum, item) => sum + item.studyCount,
+      0,
+    );
     match.cities = nextCities;
     match.total = nextTotal;
     match.coordinates = [
@@ -329,20 +396,60 @@ function createCityClusterIcon(
 // ISO 3166-1 alpha-2 codes for every African country + nearby territories.
 // Keys must match the canonical names in the study dataset (geo.ts).
 const COUNTRY_ISO2: Record<string, string> = {
-  Algeria: "dz", Morocco: "ma", Tunisia: "tn", Libya: "ly", Egypt: "eg",
-  Sudan: "sd", Mauritania: "mr", Mali: "ml", Senegal: "sn",
-  "The Gambia": "gm", "Guinea-Bissau": "gw", Guinea: "gn",
-  "Sierra Leone": "sl", Liberia: "lr", "Côte d'Ivoire": "ci",
-  Ghana: "gh", Togo: "tg", Benin: "bj", Nigeria: "ng", Niger: "ne",
-  "Burkina Faso": "bf", "Cape Verde": "cv", Chad: "td", Cameroon: "cm",
-  "Central African Republic": "cf", "Equatorial Guinea": "gq", Gabon: "ga",
-  "Congo Republic": "cg", "DR Congo": "cd", "São Tomé and Príncipe": "st",
-  Ethiopia: "et", Eritrea: "er", Djibouti: "dj", Somalia: "so",
-  Kenya: "ke", Uganda: "ug", Rwanda: "rw", Burundi: "bi",
-  Tanzania: "tz", "South Sudan": "ss", Angola: "ao", Zambia: "zm",
-  Zimbabwe: "zw", Malawi: "mw", Mozambique: "mz", Namibia: "na",
-  Botswana: "bw", "South Africa": "za", Lesotho: "ls", Eswatini: "sz",
-  Madagascar: "mg", Comoros: "km", Seychelles: "sc", Mauritius: "mu",
+  Algeria: "dz",
+  Morocco: "ma",
+  Tunisia: "tn",
+  Libya: "ly",
+  Egypt: "eg",
+  Sudan: "sd",
+  Mauritania: "mr",
+  Mali: "ml",
+  Senegal: "sn",
+  "The Gambia": "gm",
+  "Guinea-Bissau": "gw",
+  Guinea: "gn",
+  "Sierra Leone": "sl",
+  Liberia: "lr",
+  "Côte d'Ivoire": "ci",
+  Ghana: "gh",
+  Togo: "tg",
+  Benin: "bj",
+  Nigeria: "ng",
+  Niger: "ne",
+  "Burkina Faso": "bf",
+  "Cape Verde": "cv",
+  Chad: "td",
+  Cameroon: "cm",
+  "Central African Republic": "cf",
+  "Equatorial Guinea": "gq",
+  Gabon: "ga",
+  "Congo Republic": "cg",
+  "DR Congo": "cd",
+  "São Tomé and Príncipe": "st",
+  Ethiopia: "et",
+  Eritrea: "er",
+  Djibouti: "dj",
+  Somalia: "so",
+  Kenya: "ke",
+  Uganda: "ug",
+  Rwanda: "rw",
+  Burundi: "bi",
+  Tanzania: "tz",
+  "South Sudan": "ss",
+  Angola: "ao",
+  Zambia: "zm",
+  Zimbabwe: "zw",
+  Malawi: "mw",
+  Mozambique: "mz",
+  Namibia: "na",
+  Botswana: "bw",
+  "South Africa": "za",
+  Lesotho: "ls",
+  Eswatini: "sz",
+  Madagascar: "mg",
+  Comoros: "km",
+  Seychelles: "sc",
+  Mauritius: "mu",
   Réunion: "re",
 };
 
@@ -381,7 +488,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState(0);
   const [expanded, setExpanded] = useState<Set<string>>(new Set(["Fez"]));
   const [searchQuery, setSearchQuery] = useState("");
-  
+
   // Real datasets hooks
   const { data: stats } = useAsync(getDatasetStats);
   const { data: categoriesData } = useAsync(getPollutantsByCategory);
@@ -412,7 +519,7 @@ export default function App() {
   const [yearFilter, setYearFilter] = useState("All years");
   const [topicFilter, setTopicFilter] = useState("All Topics");
   const [designFilter, setDesignFilter] = useState("All settings");
-  
+
   const [selectedCountryId, setSelectedCountryId] = useState("504");
   const [selectedCountryName, setSelectedCountryName] = useState("Morocco");
   const [choroplethMode, setChoroplethMode] = useState(true);
@@ -425,29 +532,152 @@ export default function App() {
   const [authError, setAuthError] = useState("");
   const choroplethModeRef = useRef(choroplethMode);
 
-  // Top nav categories from real dataset
-  const TABS = useMemo(() => {
-    if (!categoriesData) return [];
-    return categoriesData.map(c => ({
-      label: c.category,
-      items: c.pollutants.map(p => p.name),
-      keys: c.pollutants.map(p => p.key),
-      unit: c.pollutants.find(p => p.unit)?.unit ?? "",
-    }));
+  const STATIC_RESEARCH_TABS = useMemo(() => {
+    const organicCompoundKeys = new Set([
+      "naphtalene",
+      "acenaphthylene",
+      "acenaphthene",
+      "fluorene",
+      "phenanthrene",
+      "anthracene",
+      "fluoranthene",
+      "pyrene",
+      "benzo_a_anthracene",
+      "benzo_a_pyrene",
+      "benzo_e_pyrene",
+      "benzo_b_fluoranthene",
+      "benzo_k_fluoranthene",
+      "benzo_ghi_perylene",
+      "chrysene",
+      "dibenzo_a_h_anthracene",
+      "indeno_1_2_3_cd_pyrene",
+    ]);
+
+    const partSubTabs = [
+      {
+        datasetCategory: "Bulk PM",
+        label: "Bulk PM (µg.m⁻³)",
+      },
+      {
+        datasetCategory: "Carbonaceous aerosols",
+        label: "Carbonaceous aerosols (µg.m⁻³)",
+      },
+      {
+        datasetCategory: "Water soluble inorganic aerosols",
+        label: "Water soluble inorganic aerosols (µg.m⁻³)",
+      },
+      {
+        datasetCategory: "Trace metals",
+        label: "Trace metals (ng.m⁻³)",
+        filter: (pollutant: { key: string; name: string }) =>
+          !organicCompoundKeys.has(pollutant.key),
+      },
+      {
+        datasetCategory: "Organic pollutants",
+        label: "Organic Pollutants",
+      },
+      {
+        datasetCategory: "Atmospheric gases",
+        label: "Atmospheric Gases (ppb) (*ppm)",
+      },
+    ]
+      .map(({ datasetCategory, label, filter }) => {
+        const items = (
+          (categoriesData ?? []).find(
+            (group) => group.category === datasetCategory,
+          )?.pollutants ?? []
+        )
+          .filter((pollutant) => (filter ? filter(pollutant) : true))
+          .map((p) => ({
+            name: p.name,
+            key: p.key,
+          }));
+
+        const extraOrganicItems =
+          datasetCategory === "Organic pollutants"
+            ? (
+                (categoriesData ?? [])
+                  .find((group) => group.category === "Trace metals")
+                  ?.pollutants.filter((pollutant) =>
+                    organicCompoundKeys.has(pollutant.key),
+                  ) ?? []
+              ).map((p) => ({ name: p.name, key: p.key }))
+            : [];
+
+        return { label, items: [...items, ...extraOrganicItems] };
+      })
+      .filter((tab) => tab.items.length > 0);
+
+    return [
+      {
+        label: "Particulate Matter",
+        source: "static",
+        unit: "µg/m³",
+        subTabs: partSubTabs,
+        keys: partSubTabs.flatMap((tab) => tab.items.map((item) => item.key)),
+      },
+      {
+        label: "Campaigns",
+        source: "static",
+        unit: "",
+        items: [
+          { name: "Field campaigns", key: "campaign-field" },
+          { name: "Urban monitoring", key: "campaign-urban" },
+          { name: "Intensive observations", key: "campaign-intensive" },
+          { name: "Rural background studies", key: "campaign-rural" },
+        ],
+        keys: [
+          "campaign-field",
+          "campaign-urban",
+          "campaign-intensive",
+          "campaign-rural",
+        ],
+      },
+      {
+        label: "Modeling & Remote Sensing",
+        source: "static",
+        unit: "",
+        items: [
+          { name: "AOD retrieval", key: "model-aod" },
+          { name: "Satellite estimates", key: "model-satellite" },
+          { name: "Chemical transport", key: "model-ctm" },
+          { name: "Emission inventories", key: "model-emissions" },
+        ],
+        keys: ["model-aod", "model-satellite", "model-ctm", "model-emissions"],
+      },
+      {
+        label: "Observations",
+        source: "static",
+        unit: "",
+        items: [
+          { name: "Ground stations", key: "obs-ground" },
+          { name: "Air quality networks", key: "obs-network" },
+          { name: "Observatory records", key: "obs-observatory" },
+          { name: "Long-term monitoring", key: "obs-longterm" },
+        ],
+        keys: ["obs-ground", "obs-network", "obs-observatory", "obs-longterm"],
+      },
+    ];
   }, [categoriesData]);
 
+  const TABS = STATIC_RESEARCH_TABS;
+
   // Handle active tab pollutant filtering
-  const [selectedPollutants, setSelectedPollutants] = useState<Set<string>>(new Set());
+  const [selectedPollutants, setSelectedPollutants] = useState<Set<string>>(
+    new Set(),
+  );
+  const [activeSubTab, setActiveSubTab] = useState(0);
 
   // Initialize selected pollutants when tab changes
   useEffect(() => {
     if (TABS.length > 0 && TABS[activeTab]) {
       setSelectedPollutants(new Set(TABS[activeTab].keys));
+      setActiveSubTab(0);
     }
   }, [activeTab, TABS]);
 
   const togglePollutant = (key: string) => {
-    setSelectedPollutants(prev => {
+    setSelectedPollutants((prev) => {
       const next = new Set(prev);
       if (next.has(key)) next.delete(key);
       else next.add(key);
@@ -465,29 +695,64 @@ export default function App() {
     }
     if (topicFilter !== "All Topics") {
       // Find the key for the topic
-      const p = categoriesData?.flatMap(c => c.pollutants).find(p => p.name === topicFilter);
+      const p = categoriesData
+        ?.flatMap((c) => c.pollutants)
+        .find((p) => p.name === topicFilter);
       if (p) f.pollutants = [p.key];
     }
     if (designFilter !== "All settings") {
       f.settings = [designFilter];
     }
-    if (selectedPollutants.size > 0 && selectedPollutants.size < (TABS[activeTab]?.keys.length || 0)) {
-       f.pollutants = Array.from(selectedPollutants);
-    } else if (TABS.length > 0 && TABS[activeTab]) {
-       f.categories = [TABS[activeTab].label];
+    const activeTabConfig = TABS[activeTab];
+    const isStaticTab = activeTabConfig?.source === "static";
+
+    if (!isStaticTab) {
+      if (
+        selectedPollutants.size > 0 &&
+        selectedPollutants.size < (TABS[activeTab]?.keys.length || 0)
+      ) {
+        f.pollutants = Array.from(selectedPollutants);
+      } else if (TABS.length > 0 && TABS[activeTab]) {
+        f.categories = [TABS[activeTab].label];
+      }
     }
     return f;
-  }, [searchQuery, yearFilter, topicFilter, designFilter, selectedPollutants, activeTab, TABS, categoriesData]);
+  }, [
+    searchQuery,
+    yearFilter,
+    topicFilter,
+    designFilter,
+    selectedPollutants,
+    activeTab,
+    TABS,
+    categoriesData,
+  ]);
 
-  const { data: countrySummariesData } = useAsync(() => getCountrySummaries(activeFilters), [activeFilters]);
+  const { data: countrySummariesData } = useAsync(
+    () => getCountrySummaries(activeFilters),
+    [activeFilters],
+  );
 
   // Derived state
-  const isFiltering = Object.keys(activeFilters).length > 0 && (!activeFilters.categories || activeFilters.categories.length === 0 || Object.keys(activeFilters).length > 1 || (activeFilters.pollutants && activeFilters.pollutants.length > 0));
+  const isFiltering =
+    Object.keys(activeFilters).length > 0 &&
+    (!activeFilters.categories ||
+      activeFilters.categories.length === 0 ||
+      Object.keys(activeFilters).length > 1 ||
+      (activeFilters.pollutants && activeFilters.pollutants.length > 0));
 
-  const countriesWithStudies = useMemo(() => new Set((countrySummariesData || []).map(c => c.topoId).filter(Boolean) as string[]), [countrySummariesData]);
+  const countriesWithStudies = useMemo(
+    () =>
+      new Set(
+        (countrySummariesData || [])
+          .map((c) => c.topoId)
+          .filter(Boolean) as string[],
+      ),
+    [countrySummariesData],
+  );
   const countryStudyCounts = useMemo(() => {
     const m = new Map<string, number>();
-    (countrySummariesData || []).forEach(c => {
+    (countrySummariesData || []).forEach((c) => {
       if (c.topoId) m.set(c.topoId, c.studyCount);
     });
     return m;
@@ -497,7 +762,7 @@ export default function App() {
   // the world-atlas feature names, e.g. "DR Congo" vs "Dem. Rep. Congo").
   const countryNameByTopoId = useMemo(() => {
     const m = new Map<string, string>();
-    (countrySummariesData || []).forEach(c => {
+    (countrySummariesData || []).forEach((c) => {
       if (c.topoId) m.set(c.topoId, c.name);
     });
     return m;
@@ -513,14 +778,22 @@ export default function App() {
     countryNameByTopoIdRef.current = countryNameByTopoId;
   }, [countriesWithStudies, countryStudyCounts, countryNameByTopoId]);
 
-  const selectedCountry = useMemo(() => (countrySummariesData || []).find(c => c.name === selectedCountryName), [countrySummariesData, selectedCountryName]);
+  const selectedCountry = useMemo(
+    () =>
+      (countrySummariesData || []).find((c) => c.name === selectedCountryName),
+    [countrySummariesData, selectedCountryName],
+  );
   const countryStudyCount = selectedCountry?.studyCount ?? 0;
   const countryCities = selectedCountry?.areas ?? [];
   const countryStudies = selectedCountry?.studies ?? [];
-  const allFilteredStudiesCount = countrySummariesData?.reduce((acc, c) => acc + c.studyCount, 0) ?? 0;
-  const visibleMapCities = countrySummariesData?.flatMap(c => c.areas) ?? [];
+  const allFilteredStudiesCount =
+    countrySummariesData?.reduce((acc, c) => acc + c.studyCount, 0) ?? 0;
+  const visibleMapCities = countrySummariesData?.flatMap((c) => c.areas) ?? [];
 
-  const yearRange = stats && stats.yearFrom && stats.yearTo ? `${stats.yearFrom}-${stats.yearTo}` : "No data";
+  const yearRange =
+    stats && stats.yearFrom && stats.yearTo
+      ? `${stats.yearFrom}-${stats.yearTo}`
+      : "No data";
   const totalStudies = stats?.studyCount ?? 0;
 
   const cityClusters = useMemo(
@@ -537,8 +810,11 @@ export default function App() {
   };
 
   const handleAdminLogin = () => {
-    const isLegacy = adminUsername.trim() === ADMIN_AUTH.username && adminPassword === ADMIN_AUTH.password;
-    const isUM6P   = isUM6PEmail(adminUsername) && adminPassword === UM6P_PASSWORD;
+    const isLegacy =
+      adminUsername.trim() === ADMIN_AUTH.username &&
+      adminPassword === ADMIN_AUTH.password;
+    const isUM6P =
+      isUM6PEmail(adminUsername) && adminPassword === UM6P_PASSWORD;
     if (isLegacy || isUM6P) {
       setIsAdminAuthenticated(true);
       setAuthError("");
@@ -576,7 +852,29 @@ export default function App() {
     selectedCountryIdRef.current = selectedCountryId;
   }, [selectedCountryId]);
 
+  const isCardOnlyResearchTab =
+    TABS[activeTab]?.label === "Campaigns" ||
+    TABS[activeTab]?.label === "Modeling & Remote Sensing" ||
+    TABS[activeTab]?.label === "Observations";
+
+  const particulateMatterItems = useMemo(() => {
+    if (TABS[activeTab]?.label !== "Particulate Matter") return [];
+    return TABS[activeTab].subTabs?.flatMap((subTab) => subTab.items) ?? [];
+  }, [TABS, activeTab]);
+
+  const shouldRenderMap = page === "map" && !isCardOnlyResearchTab;
+
   useEffect(() => {
+    if (!shouldRenderMap) {
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
+        countryLayerRef.current = null;
+        cityLayerRef.current = null;
+      }
+      return;
+    }
+
     if (!mapContainerRef.current || mapRef.current) return;
 
     const map = L.map(mapContainerRef.current, {
@@ -599,13 +897,17 @@ export default function App() {
           selectedCountryId,
           choroplethMode,
           countriesWithStudies,
-          countryStudyCounts
+          countryStudyCounts,
         ),
       onEachFeature: (item, layer) => {
         const countryId = normalizeCountryId(item.id as string | number);
         const countryName = item.properties?.name ?? "Country";
 
-        layer.bindTooltip(countryName, { direction: "top", opacity: 0.92, sticky: true });
+        layer.bindTooltip(countryName, {
+          direction: "top",
+          opacity: 0.92,
+          sticky: true,
+        });
         layer.on({
           click: () => {
             setSelectedCountryId(countryId);
@@ -642,7 +944,7 @@ export default function App() {
                 selectedCountryIdRef.current,
                 choroplethModeRef.current,
                 countriesWithStudiesRef.current,
-                countryStudyCountsRef.current
+                countryStudyCountsRef.current,
               ),
             );
           },
@@ -670,7 +972,7 @@ export default function App() {
       countryLayerRef.current = null;
       cityLayerRef.current = null;
     };
-  }, [page]);
+  }, [page, shouldRenderMap]);
 
   useEffect(() => {
     countryLayerRef.current?.setStyle((item) =>
@@ -679,10 +981,15 @@ export default function App() {
         selectedCountryId,
         choroplethMode,
         countriesWithStudies,
-        countryStudyCounts
+        countryStudyCounts,
       ),
     );
-  }, [selectedCountryId, choroplethMode, countriesWithStudies, countryStudyCounts]);
+  }, [
+    selectedCountryId,
+    choroplethMode,
+    countriesWithStudies,
+    countryStudyCounts,
+  ]);
 
   useEffect(() => {
     const layer = cityLayerRef.current;
@@ -711,10 +1018,13 @@ export default function App() {
 
       marker.on("click", () => {
         const leadCity = cluster.cities.reduce(
-          (largest, city) => (city.studyCount > largest.studyCount ? city : largest),
+          (largest, city) =>
+            city.studyCount > largest.studyCount ? city : largest,
           cluster.cities[0],
         );
-        const countrySum = countrySummariesData?.find(c => c.name === leadCity.country);
+        const countrySum = countrySummariesData?.find(
+          (c) => c.name === leadCity.country,
+        );
         const countryId = countrySum?.topoId;
         if (countryId) {
           setSelectedCountryId(countryId);
@@ -759,7 +1069,7 @@ export default function App() {
   const zoomIn = () => mapRef.current?.zoomIn(0.75);
   const zoomOut = () => mapRef.current?.zoomOut(0.75);
 
-  const openStudyDetail = (study: {id: number}) => {
+  const openStudyDetail = (study: { id: number }) => {
     setSelectedStudyId(study.id);
     setPage("details");
   };
@@ -770,7 +1080,7 @@ export default function App() {
   };
 
   const navigateToCountry = (country: string) => {
-    const countrySum = countrySummariesData?.find(c => c.name === country);
+    const countrySum = countrySummariesData?.find((c) => c.name === country);
     const id = countrySum?.topoId;
     if (id) {
       setSelectedCountryId(id);
@@ -786,14 +1096,76 @@ export default function App() {
     { id: "admin" as Page, icon: Info, label: "Admin" },
   ];
 
+  const activeSectionCards = useMemo(() => {
+    switch (TABS[activeTab]?.label) {
+      case "Campaigns":
+        return [
+          {
+            title: "North Africa Urban PM Campaign",
+            meta: "Morocco · 2024 · 12 sites",
+            body: "Dense seasonal monitoring of PM2.5 and black carbon across major urban corridors.",
+          },
+          {
+            title: "West Africa Mobile Sampling Network",
+            meta: "Senegal · 2023 · 8 routes",
+            body: "Roadside and residential measurements across transit corridors and peri-urban settlements.",
+          },
+          {
+            title: "Coastal Emissions Intensive Study",
+            meta: "Ghana · 2025 · 6 weeks",
+            body: "High-frequency observations for particulate matter, NOx, and VOCs during coastal flows.",
+          },
+        ];
+      case "Modeling & Remote Sensing":
+        return [
+          {
+            title: "Satellite AOD Retrieval",
+            meta: "MODIS + Sentinel-3",
+            body: "Regional aerosol optical depth inversion and trend estimation over the Sahel and coastal Africa.",
+          },
+          {
+            title: "Chemical Transport Modelling",
+            meta: "WRF-Chem · 10 km grid",
+            body: "Source attribution for dust, biomass burning, and urban emissions under seasonal forecast scenarios.",
+          },
+          {
+            title: "Emission Inventory Fusion",
+            meta: "Road + industry + biomass",
+            body: "Merged activity data to compare emissions intensities across North, West, and East Africa.",
+          },
+        ];
+      case "Observations":
+        return [
+          {
+            title: "Urban Background Station",
+            meta: "Cairo · Active",
+            body: "PM10, NO2 and O3 time series from a representative city background site.",
+          },
+          {
+            title: "Industrial Monitoring Station",
+            meta: "Johannesburg · Active",
+            body: "Routine measurements for SO2, CO, PM2.5, and trace metal deposition near industrial zones.",
+          },
+          {
+            title: "High-Altitude Observatory",
+            meta: "Addis Ababa · Seasonal",
+            body: "Long-term aerosol and gas observations across elevated transport and dust plume periods.",
+          },
+        ];
+      default:
+        return [];
+    }
+  }, [TABS, activeTab]);
+
   return (
     <div
       className="flex h-screen w-full overflow-hidden bg-background"
       style={{ fontFamily: "'Inter', sans-serif" }}
     >
       {/* SIDEBAR: hidden on admin/login pages which have their own chrome */}
-      <aside className={`sidebar flex flex-col w-56 min-w-[224px] text-white z-20 flex-shrink-0 ${page === "admin" || page === "login" ? "hidden" : ""}`}>
-
+      <aside
+        className={`sidebar flex flex-col w-56 min-w-[224px] text-white z-20 flex-shrink-0 ${page === "admin" || page === "login" ? "hidden" : ""}`}
+      >
         {/* ── Brand header ── */}
         <div className="px-4 pt-5 pb-4">
           <img
@@ -813,16 +1185,18 @@ export default function App() {
             Navigate
           </div>
           {NAV.map(({ id, icon: Icon, label }) => {
-            const isActive = page === id || (id === "map" && (page === "details"));
+            const isActive =
+              page === id || (id === "map" && page === "details");
             const navActive = page === id;
             return (
               <button
                 key={id}
                 onClick={() => navigateToPage(id)}
                 className={`sidebar-nav-item group relative flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-[13px] transition-all duration-150 text-left
-                  ${navActive
-                    ? "bg-white/12 text-white font-medium shadow-sm"
-                    : "text-white/55 hover:text-white/90 hover:bg-white/7"
+                  ${
+                    navActive
+                      ? "bg-white/12 text-white font-medium shadow-sm"
+                      : "text-white/55 hover:text-white/90 hover:bg-white/7"
                   }
                 `}
               >
@@ -886,15 +1260,16 @@ export default function App() {
         )}
 
         <div className="flex-1" />
-
       </aside>
 
       {/* ── CONTENT ── */}
       {page === "home" ? (
-        <HomePage 
-          stats={stats} 
-          onExploreMap={() => setPage("map")} 
-          onBrowseResearch={() => setPage("search")} 
+        <HomePage
+          stats={stats}
+          onGoHome={() => setPage("home")}
+          onExploreMap={() => setPage("map")}
+          onBrowseResearch={() => setPage("search")}
+          onAdmin={() => setPage("login")}
         />
       ) : page === "search" ? (
         <SearchPage
@@ -916,11 +1291,17 @@ export default function App() {
             <div className="mb-6 text-center">
               <div className="inline-flex items-center gap-2 rounded-2xl bg-[#0F1724] px-4 py-2 mb-4">
                 <div className="w-2 h-2 rounded-full bg-blue-400" />
-                <span className="text-[11px] font-semibold text-white tracking-wide">ARC-Air Admin Console</span>
+                <span className="text-[11px] font-semibold text-white tracking-wide">
+                  ARC-Air Admin Console
+                </span>
               </div>
-              <h1 className="text-2xl font-semibold text-foreground">Sign in</h1>
+              <h1 className="text-2xl font-semibold text-foreground">
+                Sign in
+              </h1>
               <p className="mt-2 text-sm text-muted-foreground">
-                Use your <span className="font-semibold text-foreground">@um6p.ma</span> email to access the admin dashboard.
+                Use your{" "}
+                <span className="font-semibold text-foreground">@um6p.ma</span>{" "}
+                email to access the admin dashboard.
               </p>
             </div>
 
@@ -962,12 +1343,18 @@ export default function App() {
             </button>
 
             <div className="mt-5 rounded-2xl bg-muted/40 px-4 py-3 text-[11px] text-muted-foreground space-y-1">
-              <div><span className="font-semibold text-foreground">Admin:</span> <code>admin</code> · <code>admin123</code></div>
+              <div>
+                <span className="font-semibold text-foreground">Admin:</span>{" "}
+                <code>admin</code> · <code>admin123</code>
+              </div>
             </div>
           </div>
         </div>
       ) : page === "admin" ? (
-        <AdminDashboard onLogout={handleAdminLogout} userEmail={adminUsername || ADMIN_AUTH.username} />
+        <AdminDashboard
+          onLogout={handleAdminLogout}
+          userEmail={adminUsername || ADMIN_AUTH.username}
+        />
       ) : (
         <div className="flex flex-col flex-1 overflow-hidden">
           {/* Top tabs */}
@@ -985,542 +1372,701 @@ export default function App() {
                     {tab.unit && (
                       <span
                         className="text-[9px] font-normal opacity-50"
-                        dangerouslySetInnerHTML={{ __html: `(${unitToHtml(tab.unit)})` }}
+                        dangerouslySetInnerHTML={{
+                          __html: `(${unitToHtml(tab.unit)})`,
+                        }}
                       />
                     )}
                   </span>
-                  {tab.items.length > 0 && <ChevronDown size={11} />}
+                  {tab.items && tab.items.length > 0 && (
+                    <ChevronDown size={11} />
+                  )}
                 </button>
               ))}
             </div>
-            {TABS[activeTab]?.items.length > 0 && (
+
+            {TABS[activeTab]?.source === "static" && TABS[activeTab].subTabs ? (
+              <div className="border-t border-border/50 bg-[#F5F8FF] px-4 py-2.5">
+                <div className="flex flex-wrap gap-2">
+                  {TABS[activeTab].subTabs.map((subTab, idx) => (
+                    <button
+                      key={subTab.label}
+                      type="button"
+                      onClick={() => setActiveSubTab(idx)}
+                      className={`rounded-full border px-3 py-1.5 text-[11px] font-medium transition-all ${
+                        activeSubTab === idx
+                          ? "border-primary bg-primary text-white shadow-sm"
+                          : "border-border bg-white text-foreground hover:border-primary/40 hover:text-primary"
+                      }`}
+                    >
+                      {subTab.label}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="mt-3 flex flex-wrap gap-3 pt-2">
+                  {TABS[activeTab].subTabs[activeSubTab].items.map((item) => (
+                    <label
+                      key={item.key}
+                      className="flex items-center gap-2 rounded-full border border-border bg-white px-2.5 py-1.5 cursor-pointer hover:border-primary/40 transition-colors"
+                    >
+                      <input
+                        type="checkbox"
+                        className="accent-primary w-3.5 h-3.5"
+                        checked={selectedPollutants.has(item.key)}
+                        onChange={() => togglePollutant(item.key)}
+                      />
+                      <span className="text-[11px] text-foreground/80">
+                        <Chem name={item.name} />
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            ) : TABS[activeTab]?.items && TABS[activeTab].items.length > 0 ? (
               <div className="flex flex-wrap gap-0 px-4 py-2 bg-[#F0F5FF] border-t border-border/50">
                 {TABS[activeTab].items.map((item, idx) => (
                   <label
-                    key={item}
+                    key={String(item.key ?? item)}
                     className="flex items-center gap-1.5 mr-5 py-0.5 cursor-pointer"
                   >
                     <input
                       type="checkbox"
                       className="accent-primary w-3 h-3"
-                      checked={selectedPollutants.has(TABS[activeTab].keys[idx])}
-                      onChange={() => togglePollutant(TABS[activeTab].keys[idx])}
+                      checked={selectedPollutants.has(String(item.key ?? item))}
+                      onChange={() => togglePollutant(String(item.key ?? item))}
                     />
                     <span className="text-[11px] text-foreground/70">
-                      <Chem name={item} />
+                      <Chem name={String(item.name ?? item)} />
                     </span>
                   </label>
                 ))}
               </div>
-            )}
+            ) : null}
           </nav>
 
           {/* Map + right panel */}
           <div className="flex flex-1 overflow-hidden">
-            {/* Map */}
+            {/* Map or placeholder cards */}
             <div className="relative flex-1 overflow-hidden bg-[#F7F9FC]">
-              <div
-                ref={mapContainerRef}
-                className="absolute inset-0 z-0 africa-vector-map"
-              />
-
-              <div className="absolute right-4 top-4 z-10 rounded-full bg-white/95 px-2 py-2 shadow-sm">
-                <div className="flex flex-col gap-2">
-                  <button
-                    className="flex h-7 w-7 items-center justify-center rounded-full border border-[#D9E1FF] text-[#3D35F4] hover:bg-[#F4F6FF]"
-                    title="Hydrogen sulfide layer"
-                  >
-                    <span className="text-[8px] font-bold">H₂S</span>
-                  </button>
-                  <button
-                    className="flex h-7 w-7 items-center justify-center rounded-full border border-[#D9E1FF] text-[#3D35F4] hover:bg-[#F4F6FF]"
-                    title="Carbon monoxide layer"
-                  >
-                    <span className="text-[8px] font-bold">CO</span>
-                  </button>
-                </div>
-              </div>
-
-              <div className="absolute left-4 top-4 z-10 flex items-center gap-1 rounded bg-white/95 p-1 shadow-sm">
-                <button
-                  onClick={focusAfrica}
-                  title="Show all Africa"
-                  className="flex h-8 items-center gap-1.5 rounded bg-primary px-2.5 text-[11px] font-medium text-primary-foreground transition-colors"
-                >
-                  <Layers size={13} />
-                  Africa
-                </button>
-                <button
-                  onClick={() => setShowClusters((c) => !c)}
-                  title={
-                    showClusters ? "Hide city clusters" : "Show city clusters"
-                  }
-                  className={`flex h-8 items-center gap-1.5 rounded px-2.5 text-[11px] font-medium transition-colors ${
-                    showClusters
-                      ? "bg-primary/10 text-primary"
-                      : "text-foreground/50 hover:text-foreground/70"
-                  }`}
-                >
-                  <MapPin size={13} />
-                  Cities
-                </button>
-              </div>
-
-              <div className="absolute right-4 top-24 z-10 rounded bg-white/95 px-3 py-2 text-[10px] text-foreground/70 shadow-sm">
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold text-foreground">
-                    {selectedCountryName}
-                  </span>
-                  <span>selected</span>
-                </div>
-                <div className="mt-1 flex items-center gap-2">
-                  <span className="font-semibold text-foreground">
-                    {countryStudyCount}
-                  </span>
-                  <span>{countryStudyCount === 1 ? "study" : "studies"}</span>
-                </div>
-                <div className="mt-1 flex items-center gap-2">
-                  <span className="font-semibold text-foreground">
-                    {cityClusters.length}
-                  </span>
-                  <span>
-                    {cityClusters.length === 1
-                      ? "city cluster"
-                      : "city clusters"}
-                  </span>
-                </div>
-                {activeFilters && (
-                  <div className="mt-1 text-primary">filtered map</div>
-                )}
-              </div>
-
-              <div className="absolute bottom-4 left-4 z-10 rounded-lg bg-white/90 px-3 py-2.5 text-[10px] shadow-md backdrop-blur-sm">
-                {choroplethMode ? (
-                  <div className="mb-1.5">
-                    <div className="flex items-center gap-1 mb-1">
-                      <span className="font-semibold text-foreground">
-                        Study Density
+              {isCardOnlyResearchTab ? (
+                <div className="h-full overflow-auto p-5">
+                  <div className="mx-auto max-w-3xl">
+                    <div className="mb-4 flex items-center justify-between gap-3">
+                      <div>
+                        <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                          {TABS[activeTab]?.label}
+                        </div>
+                        <h3 className="mt-1 text-xl font-semibold text-foreground">
+                          {TABS[activeTab]?.label === "Campaigns"
+                            ? "Field initiatives"
+                            : TABS[activeTab]?.label ===
+                                "Modeling & Remote Sensing"
+                              ? "Analytical workflows"
+                              : "Monitoring network"}
+                        </h3>
+                      </div>
+                      <span className="rounded-full border border-primary/20 bg-primary/5 px-2.5 py-1 text-[10px] font-medium text-primary">
+                        Placeholder data
                       </span>
                     </div>
-                    <div className="flex items-center gap-0.5">
-                      {MAP_CONFIG.colors.choropleth.map((c, i) => (
+
+                    <div className="grid gap-3">
+                      {activeSectionCards.map((card) => (
                         <div
-                          key={i}
-                          className="h-3 w-3 rounded-sm first:rounded-l-sm last:rounded-r-sm"
-                          style={{ backgroundColor: c }}
-                        />
+                          key={card.title}
+                          className="rounded-2xl border border-border bg-white p-4 shadow-sm transition hover:border-primary/30 hover:shadow-md"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <h4 className="text-sm font-semibold text-foreground">
+                                {card.title}
+                              </h4>
+                              <p className="mt-1 text-[11px] text-muted-foreground">
+                                {card.meta}
+                              </p>
+                            </div>
+                            <span className="mt-0.5 rounded-full bg-[#EEF3FF] px-2 py-1 text-[9px] font-semibold uppercase tracking-wide text-primary">
+                              Active
+                            </span>
+                          </div>
+                          <p className="mt-3 text-[12px] leading-6 text-foreground/75">
+                            {card.body}
+                          </p>
+                        </div>
                       ))}
                     </div>
-                    <div className="flex justify-between text-[8px] text-muted-foreground mt-0.5">
-                      <span>Fewer</span>
-                      <span>More studies</span>
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    <div className="flex items-center gap-2 mb-1">
-                      <div
-                        className="h-3 w-3 rounded-sm"
-                        style={{ backgroundColor: MAP_CONFIG.colors.selected }}
-                      />
-                      <span className="text-foreground/70">
-                        Selected Country
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <div
-                        className="h-3 w-3 rounded-sm"
-                        style={{
-                          backgroundColor: MAP_CONFIG.colors.hasStudies,
-                        }}
-                      />
-                      <span className="text-foreground/70">Has Studies</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div
-                        className="h-3 w-3 rounded-sm"
-                        style={{ backgroundColor: MAP_CONFIG.colors.noStudies }}
-                      />
-                      <span className="text-foreground/70">No Studies</span>
-                    </div>
-                  </>
-                )}
-                <div className="mt-1.5 pt-1.5 border-t border-border/40">
-                  <div className="flex items-center gap-2">
-                    <div
-                      className="flex h-4 w-4 items-center justify-center rounded-full"
-                      style={{
-                        backgroundColor: MAP_CONFIG.colors.clusterPrimary,
-                      }}
-                    >
-                      <span className="text-[7px] font-bold text-white">
-                        {Math.min(cityClusters.length, 99)}
-                      </span>
-                    </div>
-                    <span className="text-foreground/70">City clusters</span>
                   </div>
                 </div>
-                <button
-                  onClick={() => setChoroplethMode((m) => !m)}
-                  className="mt-1.5 text-[9px] text-primary font-medium hover:underline"
-                >
-                  {choroplethMode ? "Switch to binary" : "Switch to density"}
-                </button>
-              </div>
+              ) : (
+                <>
+                  <div
+                    ref={mapContainerRef}
+                    className="absolute inset-0 z-0 africa-vector-map"
+                  />
 
-              <div className="absolute bottom-4 right-4 flex flex-col gap-1">
-                <button
-                  onClick={zoomIn}
-                  title="Zoom in"
-                  className="flex h-8 w-8 items-center justify-center rounded bg-white text-foreground/70 shadow hover:text-foreground"
-                >
-                  <Plus size={14} />
-                </button>
-                <button
-                  onClick={zoomOut}
-                  title="Zoom out"
-                  className="flex h-8 w-8 items-center justify-center rounded bg-white text-foreground/70 shadow hover:text-foreground"
-                >
-                  <Minus size={14} />
-                </button>
-              </div>
+                  <div className="absolute right-4 top-4 z-10 rounded-full bg-white/95 px-2 py-2 shadow-sm">
+                    <div className="flex flex-col gap-2">
+                      <button
+                        className="flex h-7 w-7 items-center justify-center rounded-full border border-[#D9E1FF] text-[#3D35F4] hover:bg-[#F4F6FF]"
+                        title="Hydrogen sulfide layer"
+                      >
+                        <span className="text-[8px] font-bold">H₂S</span>
+                      </button>
+                      <button
+                        className="flex h-7 w-7 items-center justify-center rounded-full border border-[#D9E1FF] text-[#3D35F4] hover:bg-[#F4F6FF]"
+                        title="Carbon monoxide layer"
+                      >
+                        <span className="text-[8px] font-bold">CO</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="absolute left-4 top-4 z-10 flex items-center gap-1 rounded bg-white/95 p-1 shadow-sm">
+                    <button
+                      onClick={focusAfrica}
+                      title="Show all Africa"
+                      className="flex h-8 items-center gap-1.5 rounded bg-primary px-2.5 text-[11px] font-medium text-primary-foreground transition-colors"
+                    >
+                      <Layers size={13} />
+                      Africa
+                    </button>
+                    <button
+                      onClick={() => setShowClusters((c) => !c)}
+                      title={
+                        showClusters
+                          ? "Hide city clusters"
+                          : "Show city clusters"
+                      }
+                      className={`flex h-8 items-center gap-1.5 rounded px-2.5 text-[11px] font-medium transition-colors ${
+                        showClusters
+                          ? "bg-primary/10 text-primary"
+                          : "text-foreground/50 hover:text-foreground/70"
+                      }`}
+                    >
+                      <MapPin size={13} />
+                      Cities
+                    </button>
+                  </div>
+
+                  <div className="absolute right-4 top-24 z-10 rounded bg-white/95 px-3 py-2 text-[10px] text-foreground/70 shadow-sm">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-foreground">
+                        {selectedCountryName}
+                      </span>
+                      <span>selected</span>
+                    </div>
+                    <div className="mt-1 flex items-center gap-2">
+                      <span className="font-semibold text-foreground">
+                        {countryStudyCount}
+                      </span>
+                      <span>
+                        {countryStudyCount === 1 ? "study" : "studies"}
+                      </span>
+                    </div>
+                    <div className="mt-1 flex items-center gap-2">
+                      <span className="font-semibold text-foreground">
+                        {cityClusters.length}
+                      </span>
+                      <span>
+                        {cityClusters.length === 1
+                          ? "city cluster"
+                          : "city clusters"}
+                      </span>
+                    </div>
+                    {activeFilters && (
+                      <div className="mt-1 text-primary">filtered map</div>
+                    )}
+                  </div>
+
+                  <div className="absolute bottom-4 left-4 z-10 rounded-lg bg-white/90 px-3 py-2.5 text-[10px] shadow-md backdrop-blur-sm">
+                    {choroplethMode ? (
+                      <div className="mb-1.5">
+                        <div className="flex items-center gap-1 mb-1">
+                          <span className="font-semibold text-foreground">
+                            Study Density
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-0.5">
+                          {MAP_CONFIG.colors.choropleth.map((c, i) => (
+                            <div
+                              key={i}
+                              className="h-3 w-3 rounded-sm first:rounded-l-sm last:rounded-r-sm"
+                              style={{ backgroundColor: c }}
+                            />
+                          ))}
+                        </div>
+                        <div className="flex justify-between text-[8px] text-muted-foreground mt-0.5">
+                          <span>Fewer</span>
+                          <span>More studies</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="flex items-center gap-2 mb-1">
+                          <div
+                            className="h-3 w-3 rounded-sm"
+                            style={{
+                              backgroundColor: MAP_CONFIG.colors.selected,
+                            }}
+                          />
+                          <span className="text-foreground/70">
+                            Selected Country
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <div
+                            className="h-3 w-3 rounded-sm"
+                            style={{
+                              backgroundColor: MAP_CONFIG.colors.hasStudies,
+                            }}
+                          />
+                          <span className="text-foreground/70">
+                            Has Studies
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div
+                            className="h-3 w-3 rounded-sm"
+                            style={{
+                              backgroundColor: MAP_CONFIG.colors.noStudies,
+                            }}
+                          />
+                          <span className="text-foreground/70">No Studies</span>
+                        </div>
+                      </>
+                    )}
+                    <div className="mt-1.5 pt-1.5 border-t border-border/40">
+                      <div className="flex items-center gap-2">
+                        <div
+                          className="flex h-4 w-4 items-center justify-center rounded-full"
+                          style={{
+                            backgroundColor: MAP_CONFIG.colors.clusterPrimary,
+                          }}
+                        >
+                          <span className="text-[7px] font-bold text-white">
+                            {Math.min(cityClusters.length, 99)}
+                          </span>
+                        </div>
+                        <span className="text-foreground/70">
+                          City clusters
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setChoroplethMode((m) => !m)}
+                      className="mt-1.5 text-[9px] text-primary font-medium hover:underline"
+                    >
+                      {choroplethMode
+                        ? "Switch to binary"
+                        : "Switch to density"}
+                    </button>
+                  </div>
+
+                  <div className="absolute bottom-4 right-4 flex flex-col gap-1">
+                    <button
+                      onClick={zoomIn}
+                      title="Zoom in"
+                      className="flex h-8 w-8 items-center justify-center rounded bg-white text-foreground/70 shadow hover:text-foreground"
+                    >
+                      <Plus size={14} />
+                    </button>
+                    <button
+                      onClick={zoomOut}
+                      title="Zoom out"
+                      className="flex h-8 w-8 items-center justify-center rounded bg-white text-foreground/70 shadow hover:text-foreground"
+                    >
+                      <Minus size={14} />
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
 
-            {/* Right panel */}
-            <div className="w-80 xl:w-96 flex flex-col bg-white border-l border-border overflow-hidden flex-shrink-0">
-              <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-border">
-                <div className="flex items-center gap-2">
-                  <CountryFlag country={selectedCountryName} />
-                  <h2 className="font-semibold text-sm text-foreground">
-                    {selectedCountryName}
-                  </h2>
-                </div>
-                <button
-                  onClick={focusAfrica}
-                  className="text-[11px] text-primary font-medium hover:underline whitespace-nowrap"
-                >
-                  Reset Africa View
-                </button>
-              </div>
-
-              <div className="grid grid-cols-4 divide-x divide-border border-b border-border">
-                {[
-                  {
-                    val: isFiltering
-                      ? `${countryStudies.length}/${countrySummariesData?.find(c => c.name === selectedCountryName)?.studyCount ?? 0}`
-                      : String(countryStudyCount),
-                    label: "Studies",
-                  },
-                  { val: String(countryCities.length), label: "Areas" },
-                  { val: yearRange, label: "Overall Years" },
-                  { val: String(totalStudies), label: "Total in DB" },
-                ].map((s, i) => (
-                  <div key={i} className="flex flex-col items-center py-3 px-1">
-                    <span className="text-sm font-bold text-foreground leading-tight text-center">
-                      {s.val}
-                    </span>
-                    {s.label && (
-                      <span className="text-[9px] text-muted-foreground mt-0.5">
-                        {s.label}
-                      </span>
-                    )}
+            {!isCardOnlyResearchTab && (
+              <div className="w-80 xl:w-96 flex flex-col bg-white border-l border-border overflow-hidden flex-shrink-0">
+                <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-border">
+                  <div className="flex items-center gap-2">
+                    <CountryFlag country={selectedCountryName} />
+                    <h2 className="font-semibold text-sm text-foreground">
+                      {selectedCountryName}
+                    </h2>
                   </div>
-                ))}
-              </div>
-
-              <div className="px-4 py-3 border-b border-border">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
-                    Filters
-                    {activeFilters && (
-                      <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-                    )}
-                  </span>
                   <button
-                    onClick={() => {
-                      setSearchQuery("");
-                      setYearFilter("All years");
-                      setTopicFilter("All Topics");
-                      setDesignFilter("All settings");
-                    }}
-                    className={`text-[10px] font-medium transition-all duration-300 ${
-                      isFiltering
-                        ? "text-primary hover:underline clear-pulse"
-                        : "text-muted-foreground hover:text-foreground"
-                    }`}
+                    onClick={focusAfrica}
+                    className="text-[11px] text-primary font-medium hover:underline whitespace-nowrap"
                   >
-                    {isFiltering ? "Clear Filters" : "Clear"}
+                    Reset Africa View
                   </button>
                 </div>
-                <div className="grid grid-cols-2 gap-2">
+
+                <div className="grid grid-cols-4 divide-x divide-border border-b border-border">
                   {[
                     {
-                      val: yearFilter,
-                      set: setYearFilter,
-                      opts: yearOptions,
-                      defaults: "All years",
+                      val: isFiltering
+                        ? `${countryStudies.length}/${countrySummariesData?.find((c) => c.name === selectedCountryName)?.studyCount ?? 0}`
+                        : String(countryStudyCount),
+                      label: "Studies",
                     },
-                    {
-                      val: topicFilter,
-                      set: setTopicFilter,
-                      opts: ["All Topics", ...(categoriesData?.flatMap(c => c.pollutants).map(p => p.name) || [])],
-                      defaults: "All Topics",
-                    },
-                    {
-                      val: designFilter,
-                      set: setDesignFilter,
-                      opts: settingOptions,
-                      defaults: "All settings",
-                    }
-                  ].map(({ val, set, opts, defaults }, i) => {
-                    const isActive = val !== defaults;
-                    return (
-                      <div key={i} className="relative">
-                        <select
-                          value={val}
-                          onChange={(e) => set(e.target.value)}
-                          className={`w-full text-[10px] border rounded px-2 py-1.5 bg-background text-foreground appearance-none pr-5 cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary/30 transition-all duration-300 ${
-                            isActive
-                              ? "filter-active border-primary"
-                              : "border-border"
-                          }`}
-                        >
-                          {opts.map((o) => (
-                            <option key={o}>{o}</option>
-                          ))}
-                        </select>
-                        <ChevronDown
-                          size={10}
-                          className={`absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none transition-colors duration-300 ${
-                            isActive ? "text-primary" : "text-muted-foreground"
-                          }`}
-                        />
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {isFiltering && (
-                <div className="px-4 py-2 border-b border-border bg-muted/20">
-                  <div className="flex flex-wrap gap-1.5">
-                    {yearFilter !== "All years" && (
-                      <span className="inline-flex items-center gap-1 rounded bg-primary/10 px-1.5 py-0.5 text-[9px] font-medium text-primary">
-                        Year: {yearFilter}
-                      </span>
-                    )}
-                    {topicFilter !== "All Topics" && (
-                      <span className="inline-flex items-center gap-1 rounded bg-primary/10 px-1.5 py-0.5 text-[9px] font-medium text-primary">
-                        Topic: {topicFilter}
-                      </span>
-                    )}
-                    {designFilter !== "All settings" && (
-                      <span className="inline-flex items-center gap-1 rounded bg-primary/10 px-1.5 py-0.5 text-[9px] font-medium text-primary">
-                        Setting: {designFilter}
-                      </span>
-                    )}
-                    {selectedPollutants.size > 0 && selectedPollutants.size < (TABS[activeTab]?.keys.length || 0) && (
-                      <span className="inline-flex items-center gap-1 rounded bg-primary/10 px-1.5 py-0.5 text-[9px] font-medium text-primary">
-                        {selectedPollutants.size} Pollutants filtered
-                      </span>
-                    )}
-                    {searchQuery && (
-                      <span className="inline-flex items-center gap-1 rounded bg-primary/10 px-1.5 py-0.5 text-[9px] font-medium text-primary">
-                        Search: "
-                        {searchQuery.length > 15
-                          ? searchQuery.slice(0, 15) + "…"
-                          : searchQuery}
-                        "
-                      </span>
-                    )}
-                  </div>
-                  <div className="mt-1 text-[9px] text-muted-foreground">
-                    {allFilteredStudiesCount} of {totalStudies} studies match across Africa
-                  </div>
-                </div>
-              )}
-
-              <div className="px-4 py-3 border-b border-border">
-                <div className="relative">
-                  <Search
-                    size={12}
-                    className={`absolute left-2.5 top-1/2 -translate-y-1/2 transition-colors duration-300 ${
-                      searchQuery ? "text-primary" : "text-muted-foreground"
-                    }`}
-                  />
-                  <input
-                    type="text"
-                    placeholder="Search studies by title, author, keyword..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className={`w-full text-[11px] border rounded pl-7 pr-7 py-2 bg-background focus:outline-none focus:ring-1 focus:ring-primary/30 placeholder:text-muted-foreground/60 transition-all duration-300 ${
-                      searchQuery
-                        ? "search-active border-primary"
-                        : "border-border"
-                    }`}
-                  />
-                  {searchQuery && (
-                    <button
-                      onClick={() => setSearchQuery("")}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 transition-transform hover:scale-110 active:scale-90"
+                    { val: String(countryCities.length), label: "Areas" },
+                    { val: yearRange, label: "Overall Years" },
+                    { val: String(totalStudies), label: "Total in DB" },
+                  ].map((s, i) => (
+                    <div
+                      key={i}
+                      className="flex flex-col items-center py-3 px-1"
                     >
-                      <X size={12} className="text-primary" />
+                      <span className="text-sm font-bold text-foreground leading-tight text-center">
+                        {s.val}
+                      </span>
+                      {s.label && (
+                        <span className="text-[9px] text-muted-foreground mt-0.5">
+                          {s.label}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                <div className="px-4 py-3 border-b border-border">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                      Filters
+                      {activeFilters && (
+                        <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                      )}
+                    </span>
+                    <button
+                      onClick={() => {
+                        setSearchQuery("");
+                        setYearFilter("All years");
+                        setTopicFilter("All Topics");
+                        setDesignFilter("All settings");
+                      }}
+                      className={`text-[10px] font-medium transition-all duration-300 ${
+                        isFiltering
+                          ? "text-primary hover:underline clear-pulse"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      {isFiltering ? "Clear Filters" : "Clear"}
                     </button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      {
+                        val: yearFilter,
+                        set: setYearFilter,
+                        opts: yearOptions,
+                        defaults: "All years",
+                      },
+                      {
+                        val: topicFilter,
+                        set: setTopicFilter,
+                        opts: [
+                          "All Topics",
+                          ...(categoriesData
+                            ?.flatMap((c) => c.pollutants)
+                            .map((p) => p.name) || []),
+                        ],
+                        defaults: "All Topics",
+                      },
+                      {
+                        val: designFilter,
+                        set: setDesignFilter,
+                        opts: settingOptions,
+                        defaults: "All settings",
+                      },
+                    ].map(({ val, set, opts, defaults }, i) => {
+                      const isActive = val !== defaults;
+                      return (
+                        <div key={i} className="relative">
+                          <select
+                            value={val}
+                            onChange={(e) => set(e.target.value)}
+                            className={`w-full text-[10px] border rounded px-2 py-1.5 bg-background text-foreground appearance-none pr-5 cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary/30 transition-all duration-300 ${
+                              isActive
+                                ? "filter-active border-primary"
+                                : "border-border"
+                            }`}
+                          >
+                            {opts.map((o) => (
+                              <option key={o}>{o}</option>
+                            ))}
+                          </select>
+                          <ChevronDown
+                            size={10}
+                            className={`absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none transition-colors duration-300 ${
+                              isActive
+                                ? "text-primary"
+                                : "text-muted-foreground"
+                            }`}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {isFiltering && (
+                  <div className="px-4 py-2 border-b border-border bg-muted/20">
+                    <div className="flex flex-wrap gap-1.5">
+                      {yearFilter !== "All years" && (
+                        <span className="inline-flex items-center gap-1 rounded bg-primary/10 px-1.5 py-0.5 text-[9px] font-medium text-primary">
+                          Year: {yearFilter}
+                        </span>
+                      )}
+                      {topicFilter !== "All Topics" && (
+                        <span className="inline-flex items-center gap-1 rounded bg-primary/10 px-1.5 py-0.5 text-[9px] font-medium text-primary">
+                          Topic: {topicFilter}
+                        </span>
+                      )}
+                      {designFilter !== "All settings" && (
+                        <span className="inline-flex items-center gap-1 rounded bg-primary/10 px-1.5 py-0.5 text-[9px] font-medium text-primary">
+                          Setting: {designFilter}
+                        </span>
+                      )}
+                      {selectedPollutants.size > 0 &&
+                        selectedPollutants.size <
+                          (TABS[activeTab]?.keys.length || 0) && (
+                          <span className="inline-flex items-center gap-1 rounded bg-primary/10 px-1.5 py-0.5 text-[9px] font-medium text-primary">
+                            {selectedPollutants.size} Pollutants filtered
+                          </span>
+                        )}
+                      {searchQuery && (
+                        <span className="inline-flex items-center gap-1 rounded bg-primary/10 px-1.5 py-0.5 text-[9px] font-medium text-primary">
+                          Search: "
+                          {searchQuery.length > 15
+                            ? searchQuery.slice(0, 15) + "…"
+                            : searchQuery}
+                          "
+                        </span>
+                      )}
+                    </div>
+                    <div className="mt-1 text-[9px] text-muted-foreground">
+                      {allFilteredStudiesCount} of {totalStudies} studies match
+                      across Africa
+                    </div>
+                  </div>
+                )}
+
+                <div className="px-4 py-3 border-b border-border">
+                  <div className="relative">
+                    <Search
+                      size={12}
+                      className={`absolute left-2.5 top-1/2 -translate-y-1/2 transition-colors duration-300 ${
+                        searchQuery ? "text-primary" : "text-muted-foreground"
+                      }`}
+                    />
+                    <input
+                      type="text"
+                      placeholder="Search studies by title, author, keyword..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className={`w-full text-[11px] border rounded pl-7 pr-7 py-2 bg-background focus:outline-none focus:ring-1 focus:ring-primary/30 placeholder:text-muted-foreground/60 transition-all duration-300 ${
+                        searchQuery
+                          ? "search-active border-primary"
+                          : "border-border"
+                      }`}
+                    />
+                    {searchQuery && (
+                      <button
+                        onClick={() => setSearchQuery("")}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 transition-transform hover:scale-110 active:scale-90"
+                      >
+                        <X size={12} className="text-primary" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex-1 overflow-y-auto">
+                  {countryStudyCount === 0 && (
+                    <div className="px-5 py-8 text-center">
+                      <div className="mx-auto mb-3 flex h-9 w-9 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                        <Info size={16} />
+                      </div>
+                      <div className="text-xs font-semibold text-foreground">
+                        {isFiltering
+                          ? "No studies match filters"
+                          : "No studies mapped yet"}
+                      </div>
+                      <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+                        {isFiltering
+                          ? "Try clearing your filters or selecting a different country."
+                          : `${selectedCountryName} is selectable, but there are no research studies in the current dataset.`}
+                      </p>
+                    </div>
+                  )}
+
+                  {countryStudyCount > 0 && (
+                    <>
+                      <div className="divide-y divide-border/40">
+                        {countryCities.map((city, idx) => (
+                          <div key={city.name} className={idx === 0 ? "" : ""}>
+                            <button
+                              className="flex items-center justify-between w-full px-4 py-3 hover:bg-muted/40 transition-all duration-200"
+                              onClick={() => toggleCity(city.name)}
+                            >
+                              <div className="flex items-center gap-2.5">
+                                <span
+                                  className={`transition-transform duration-200 ${expanded.has(city.name) ? "rotate-0" : "-rotate-90"}`}
+                                >
+                                  <ChevronDown
+                                    size={12}
+                                    className="text-muted-foreground"
+                                  />
+                                </span>
+                                <div className="text-left">
+                                  <div className="text-xs font-medium text-foreground">
+                                    {city.name}
+                                  </div>
+                                  <div className="text-[10px] text-muted-foreground max-w-[120px] truncate">
+                                    {city.settings?.join(", ")}
+                                  </div>
+                                </div>
+                              </div>
+                              <span
+                                className="text-[11px] font-semibold text-primary bg-primary/10 rounded px-2 py-0.5"
+                                style={{ fontFamily: "'DM Mono', monospace" }}
+                              >
+                                {city.studyCount} studies
+                              </span>
+                            </button>
+                            <div
+                              className={`overflow-hidden transition-all duration-250 ease-in-out ${
+                                expanded.has(city.name)
+                                  ? "max-h-96 opacity-100"
+                                  : "max-h-0 opacity-0"
+                              }`}
+                            >
+                              <div className="bg-muted/30 pl-10 pr-4 py-2 space-y-0.5">
+                                {city.studies.length === 0 ? (
+                                  <div className="text-[11px] text-muted-foreground py-1">
+                                    No study details available
+                                  </div>
+                                ) : (
+                                  <div className="space-y-1.5 py-1">
+                                    {city.studies.map((s) => {
+                                      const pKeys = new Set(
+                                        (
+                                          countryStudies.find(
+                                            (cs) => cs.id === s.id,
+                                          )?.records ?? []
+                                        ).flatMap((r) =>
+                                          Object.keys(r.measurements),
+                                        ),
+                                      );
+                                      const pNames = Array.from(pKeys)
+                                        .slice(0, 3)
+                                        .map((k) => {
+                                          const p = categoriesData
+                                            ?.flatMap((c) => c.pollutants)
+                                            .find((p) => p.key === k);
+                                          return p ? p.name : k;
+                                        });
+                                      return (
+                                        <button
+                                          key={s.id}
+                                          onClick={() => openStudyDetail(s)}
+                                          className="w-full text-left rounded-lg border border-border bg-white p-2.5 hover:border-primary/30 hover:shadow-sm transition-all duration-150"
+                                        >
+                                          <div className="text-[11px] font-medium text-foreground leading-snug line-clamp-2">
+                                            {s.title || s.source}
+                                          </div>
+                                          <div className="mt-0.5 text-[10px] text-muted-foreground">
+                                            {s.source}
+                                          </div>
+                                          {pNames.length > 0 && (
+                                            <div className="mt-1.5 flex flex-wrap gap-1">
+                                              {pNames.map((n) => (
+                                                <span
+                                                  key={n}
+                                                  className="rounded bg-primary/10 px-1.5 py-0.5 text-[9px] font-medium text-primary"
+                                                >
+                                                  {n}
+                                                </span>
+                                              ))}
+                                              {pKeys.size > 3 && (
+                                                <span className="rounded bg-muted px-1.5 py-0.5 text-[9px] text-muted-foreground">
+                                                  +{pKeys.size - 3}
+                                                </span>
+                                              )}
+                                            </div>
+                                          )}
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="px-4 py-4">
+                        <div className="mb-3 text-xs font-semibold text-foreground">
+                          Study Records
+                        </div>
+                        {countryStudies.length === 0 ? (
+                          <div className="rounded-lg border border-border bg-muted/20 px-3 py-5 text-center text-[11px] text-muted-foreground">
+                            No studies match the current search.
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                            {countryStudies.map((study) => {
+                              const pKeys = new Set(
+                                study.records.flatMap((r) =>
+                                  Object.keys(r.measurements),
+                                ),
+                              );
+                              const pNames = Array.from(pKeys)
+                                .slice(0, 3)
+                                .map((k) => {
+                                  const p = categoriesData
+                                    ?.flatMap((c) => c.pollutants)
+                                    .find((p) => p.key === k);
+                                  return p ? p.name : k;
+                                });
+                              return (
+                                <div
+                                  key={study.id}
+                                  onClick={() => openStudyDetail(study)}
+                                  className="rounded-lg border border-border bg-white p-3 transition-all duration-200 hover:shadow-sm hover:border-primary/20 cursor-pointer"
+                                >
+                                  <div className="text-xs font-semibold leading-snug text-foreground">
+                                    {study.title}
+                                  </div>
+                                  <div className="mt-1 text-[11px] text-muted-foreground">
+                                    {study.source} ({study.yearFrom}
+                                    {study.yearTo &&
+                                    study.yearTo !== study.yearFrom
+                                      ? `-${study.yearTo}`
+                                      : ""}
+                                    )
+                                  </div>
+                                  <div className="mt-2 flex flex-wrap gap-1">
+                                    {pNames.map((item) => (
+                                      <span
+                                        key={item}
+                                        className="rounded bg-primary/10 px-1.5 py-0.5 text-[9px] font-medium text-primary"
+                                      >
+                                        {item}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    </>
                   )}
                 </div>
               </div>
-
-              <div className="flex-1 overflow-y-auto">
-                {countryStudyCount === 0 && (
-                  <div className="px-5 py-8 text-center">
-                    <div className="mx-auto mb-3 flex h-9 w-9 items-center justify-center rounded-full bg-muted text-muted-foreground">
-                      <Info size={16} />
-                    </div>
-                    <div className="text-xs font-semibold text-foreground">
-                      {isFiltering ? "No studies match filters" : "No studies mapped yet"}
-                    </div>
-                    <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
-                      {isFiltering
-                        ? "Try clearing your filters or selecting a different country."
-                        : `${selectedCountryName} is selectable, but there are no research studies in the current dataset.`}
-                    </p>
-                  </div>
-                )}
-
-                {countryStudyCount > 0 && (
-                  <>
-                    <div className="divide-y divide-border/40">
-                      {countryCities.map((city, idx) => (
-                        <div key={city.name} className={idx === 0 ? "" : ""}>
-                          <button
-                            className="flex items-center justify-between w-full px-4 py-3 hover:bg-muted/40 transition-all duration-200"
-                            onClick={() => toggleCity(city.name)}
-                          >
-                            <div className="flex items-center gap-2.5">
-                              <span
-                                className={`transition-transform duration-200 ${expanded.has(city.name) ? "rotate-0" : "-rotate-90"}`}
-                              >
-                                <ChevronDown
-                                  size={12}
-                                  className="text-muted-foreground"
-                                />
-                              </span>
-                              <div className="text-left">
-                                <div className="text-xs font-medium text-foreground">
-                                  {city.name}
-                                </div>
-                                <div className="text-[10px] text-muted-foreground max-w-[120px] truncate">
-                                  {city.settings?.join(", ")}
-                                </div>
-                              </div>
-                            </div>
-                            <span
-                              className="text-[11px] font-semibold text-primary bg-primary/10 rounded px-2 py-0.5"
-                              style={{ fontFamily: "'DM Mono', monospace" }}
-                            >
-                              {city.studyCount} studies
-                            </span>
-                          </button>
-                          <div
-                            className={`overflow-hidden transition-all duration-250 ease-in-out ${
-                              expanded.has(city.name)
-                                ? "max-h-96 opacity-100"
-                                : "max-h-0 opacity-0"
-                            }`}
-                          >
-                            <div className="bg-muted/30 pl-10 pr-4 py-2 space-y-0.5">
-                              {city.studies.length === 0 ? (
-                                <div className="text-[11px] text-muted-foreground py-1">
-                                  No study details available
-                                </div>
-                              ) : (
-                                <div className="space-y-1.5 py-1">
-                                  {city.studies.map((s) => {
-                                    const pKeys = new Set(
-                                      (countryStudies.find(cs => cs.id === s.id)?.records ?? [])
-                                        .flatMap(r => Object.keys(r.measurements))
-                                    );
-                                    const pNames = Array.from(pKeys).slice(0, 3).map(k => {
-                                      const p = categoriesData?.flatMap(c => c.pollutants).find(p => p.key === k);
-                                      return p ? p.name : k;
-                                    });
-                                    return (
-                                      <button
-                                        key={s.id}
-                                        onClick={() => openStudyDetail(s)}
-                                        className="w-full text-left rounded-lg border border-border bg-white p-2.5 hover:border-primary/30 hover:shadow-sm transition-all duration-150"
-                                      >
-                                        <div className="text-[11px] font-medium text-foreground leading-snug line-clamp-2">{s.title || s.source}</div>
-                                        <div className="mt-0.5 text-[10px] text-muted-foreground">{s.source}</div>
-                                        {pNames.length > 0 && (
-                                          <div className="mt-1.5 flex flex-wrap gap-1">
-                                            {pNames.map(n => (
-                                              <span key={n} className="rounded bg-primary/10 px-1.5 py-0.5 text-[9px] font-medium text-primary">{n}</span>
-                                            ))}
-                                            {pKeys.size > 3 && (
-                                              <span className="rounded bg-muted px-1.5 py-0.5 text-[9px] text-muted-foreground">+{pKeys.size - 3}</span>
-                                            )}
-                                          </div>
-                                        )}
-                                      </button>
-                                    );
-                                  })}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-
-                    <div className="px-4 py-4">
-                      <div className="mb-3 text-xs font-semibold text-foreground">
-                        Study Records
-                      </div>
-                      {countryStudies.length === 0 ? (
-                        <div className="rounded-lg border border-border bg-muted/20 px-3 py-5 text-center text-[11px] text-muted-foreground">
-                          No studies match the current search.
-                        </div>
-                      ) : (
-                        <div className="space-y-2">
-                          {countryStudies.map((study) => {
-                            const pKeys = new Set(study.records.flatMap(r => Object.keys(r.measurements)));
-                            const pNames = Array.from(pKeys).slice(0, 3).map(k => {
-                              const p = categoriesData?.flatMap(c => c.pollutants).find(p => p.key === k);
-                              return p ? p.name : k;
-                            });
-                            return (
-                            <div
-                              key={study.id}
-                              onClick={() => openStudyDetail(study)}
-                              className="rounded-lg border border-border bg-white p-3 transition-all duration-200 hover:shadow-sm hover:border-primary/20 cursor-pointer"
-                            >
-                              <div className="text-xs font-semibold leading-snug text-foreground">
-                                {study.title}
-                              </div>
-                              <div className="mt-1 text-[11px] text-muted-foreground">
-                                {study.source} ({study.yearFrom}{study.yearTo && study.yearTo !== study.yearFrom ? `-${study.yearTo}` : ""})
-                              </div>
-                              <div className="mt-2 flex flex-wrap gap-1">
-                                {pNames.map((item) => (
-                                  <span
-                                    key={item}
-                                    className="rounded bg-primary/10 px-1.5 py-0.5 text-[9px] font-medium text-primary"
-                                  >
-                                    {item}
-                                  </span>
-                                ))}
-                              </div>
-                            </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
+            )}
           </div>
         </div>
       )}

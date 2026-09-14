@@ -56,6 +56,7 @@ export const COUNTRY_TOPO_ID: Record<string, string> = {
   Somalia: "706",
   "South Africa": "710",
   "South Sudan": "728",
+  "São Tomé and Príncipe": "678",
   Sudan: "729",
   Tanzania: "834",
   Togo: "768",
@@ -127,6 +128,7 @@ export const COUNTRY_CENTROIDS: Record<string, [number, number]> = {
   Somalia: [45.87, 6.06],
   "South Africa": [25.08, -29.0],
   "South Sudan": [30.24, 7.28],
+  "São Tomé and Príncipe": [6.6, 0.2],
   Sudan: [29.94, 15.99],
   Tanzania: [34.81, -6.27],
   Togo: [0.98, 8.53],
@@ -157,7 +159,7 @@ export const AREA_COORDINATES: Record<string, [number, number]> = {
   "Morocco|Nador": [-2.9335, 35.1743],
   "Morocco|Atlas Mohammed V (AMV) observatory": [-5.11, 33.4],
   // Mauritania
-  "Mauritania|Nouakchott": [-15.9785, 18.0790],
+  "Mauritania|Nouakchott": [-15.9785, 18.079],
   // Tunisia
   "Tunisia|Sfax": [10.7603, 34.7406],
   "Tunisia|Kairouan": [10.0963, 35.6781],
@@ -228,7 +230,9 @@ export const AREA_COORDINATES: Record<string, [number, number]> = {
   "South Africa|Amerfoort": [30.1265, -27.0093],
   "South Africa|Skukuza": [31.5896, -24.9948],
   "South Africa|Louis Trichardt": [29.9036, -23.0439],
-  "South Africa|Johannesburg, Tshwane, Ekurhuleni and VTAPA": [28.0473, -26.2041],
+  "South Africa|Johannesburg, Tshwane, Ekurhuleni and VTAPA": [
+    28.0473, -26.2041,
+  ],
   "South Africa|Kwadela": [29.65, -26.45],
   "South Africa|Kwazamokuhle": [29.75, -26.15],
   "South Africa|Zamdela": [27.85, -26.85],
