@@ -40,13 +40,15 @@ import StudyDetailPage from "./StudyDetailPage";
 import HomePage from "./HomePage";
 import { Chem, unitToHtml } from "./utils/chemFormat";
 import AdminDashboard from "./AdminDashboard";
+/*temporary adding this import*/
+import { testMapApi } from "./services/studyService";
 
 const MAP_CONFIG = {
   view: {
     center: [5, 20] as [number, number],
-    zoom: 3.15,
+    zoom: 4,
     minZoom: 2.5,
-    maxZoom: 6,
+    maxZoom: 12,
     zoomSnap: 0.25,
     zoomDelta: 0.5,
   },
@@ -72,7 +74,7 @@ const MAP_CONFIG = {
     iconMinSize: 28,
     iconMaxSize: 54,
     iconBaseFactor: 5.5,
-    thresholds: [8.5, 5, 2.8, 1.35, 0],
+    thresholds: [8.5, 5, 0, 0, 0],
     zoomLevels: [3.25, 4, 4.75, 5.5],
   },
   animation: { countryMs: 140, hoverMs: 100, flyDuration: 0.35 },
@@ -456,7 +458,7 @@ const COUNTRY_ISO2: Record<string, string> = {
 function CountryFlag({ country }: { country: string }) {
   const iso = COUNTRY_ISO2[country];
   return (
-    <div className="w-6 h-4 rounded-sm overflow-hidden flex-shrink-0 bg-muted">
+    <div className="w-6 h-4 rounded-sm overflow-hidden shrink-0 bg-muted">
       {iso ? (
         <img
           src={`https://flagcdn.com/32x24/${iso}.png`}
@@ -479,6 +481,11 @@ function CountryFlag({ country }: { country: string }) {
 type Page = "home" | "map" | "search" | "details" | "admin" | "login";
 
 export default function App() {
+  /**temporary adding this */
+  useEffect(() => {
+    testMapApi().catch(console.error);
+  }, []);
+
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<L.Map | null>(null);
   const countryLayerRef = useRef<L.GeoJSON | null>(null);
@@ -494,6 +501,7 @@ export default function App() {
   const { data: categoriesData } = useAsync(getPollutantsByCategory);
   const { data: allAreasData } = useAsync(getAllAreas);
   const { data: settingsList } = useAsync(getSettings);
+  const [selectedCityName, setSelectedCityName] = useState<string | null>(null);
 
   // Year buckets derived from the dataset's real sampling-year range.
   const yearOptions = useMemo(() => {
@@ -524,7 +532,7 @@ export default function App() {
   const [selectedCountryName, setSelectedCountryName] = useState("Morocco");
   const [choroplethMode, setChoroplethMode] = useState(true);
   const [showClusters, setShowClusters] = useState(true);
-  const [selectedStudyId, setSelectedStudyId] = useState<number | null>(null);
+  const [selectedStudyId, setSelectedStudyId] = useState<string | null>(null);
   const [mapZoom, setMapZoom] = useState(MAP_CONFIG.view.zoom);
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
   const [adminUsername, setAdminUsername] = useState("");
@@ -786,6 +794,17 @@ export default function App() {
   const countryStudyCount = selectedCountry?.studyCount ?? 0;
   const countryCities = selectedCountry?.areas ?? [];
   const countryStudies = selectedCountry?.studies ?? [];
+  const validCountryYears = countryStudies
+    .flatMap((study) => [study.yearFrom, study.yearTo])
+    .filter((year): year is number => year !== null && year > 0);
+  const countryYearFrom =
+    validCountryYears.length > 0 ? Math.min(...validCountryYears) : null;
+  const countryYearTo =
+    validCountryYears.length > 0 ? Math.max(...validCountryYears) : null;
+  const countryYearRange =
+    countryYearFrom !== null && countryYearTo !== null
+      ? `${countryYearFrom}-${countryYearTo}`
+      : "No data";
   const allFilteredStudiesCount =
     countrySummariesData?.reduce((acc, c) => acc + c.studyCount, 0) ?? 0;
   const visibleMapCities = countrySummariesData?.flatMap((c) => c.areas) ?? [];
@@ -994,9 +1013,11 @@ export default function App() {
   useEffect(() => {
     const layer = cityLayerRef.current;
     const map = mapRef.current;
+
     if (!layer || !map) return;
 
     layer.clearLayers();
+
     if (!showClusters) return;
 
     cityClusters.forEach((cluster) => {
@@ -1004,6 +1025,7 @@ export default function App() {
         cluster.cities.length > 1
           ? `${cluster.cities.length} cities`
           : cluster.cities[0].name;
+
       const marker = L.marker(toLatLng(cluster.coordinates), {
         icon: createCityClusterIcon(cluster, selectedCountryName),
         keyboard: true,
@@ -1022,25 +1044,46 @@ export default function App() {
             city.studyCount > largest.studyCount ? city : largest,
           cluster.cities[0],
         );
+
         const countrySum = countrySummariesData?.find(
           (c) => c.name === leadCity.country,
         );
+
         const countryId = countrySum?.topoId;
+
         if (countryId) {
           setSelectedCountryId(countryId);
           setSelectedCountryName(leadCity.country);
         }
 
+        // Open the city in the sidebar.
         setExpanded((prev) => {
           const next = new Set(prev);
-          cluster.cities.forEach((city) => next.add(city.name));
+          next.add(leadCity.name);
           return next;
         });
 
+        // Select the city and scroll to it.
+        if (cluster.cities.length === 1) {
+          setSelectedCityName(leadCity.name);
+
+          setTimeout(() => {
+            const cityRow = document.getElementById(
+              `city-row-${leadCity.country}-${leadCity.name}`,
+            );
+
+            cityRow?.scrollIntoView({
+              behavior: "smooth",
+              block: "center",
+            });
+          }, 150);
+        }
+
+        // Zoom in when the marker represents multiple cities.
         if (cluster.cities.length > 1) {
           map.flyTo(
             toLatLng(cluster.coordinates),
-            Math.min(map.getZoom() + 1, 6),
+            Math.min(map.getZoom() + 1, 10),
             { duration: 0.35 },
           );
         }
@@ -1069,7 +1112,7 @@ export default function App() {
   const zoomIn = () => mapRef.current?.zoomIn(0.75);
   const zoomOut = () => mapRef.current?.zoomOut(0.75);
 
-  const openStudyDetail = (study: { id: number }) => {
+  const openStudyDetail = (study: { id: string }) => {
     setSelectedStudyId(study.id);
     setPage("details");
   };
@@ -1164,7 +1207,7 @@ export default function App() {
     >
       {/* SIDEBAR: hidden on admin/login pages which have their own chrome */}
       <aside
-        className={`sidebar flex flex-col w-56 min-w-[224px] text-white z-20 flex-shrink-0 ${page === "admin" || page === "login" ? "hidden" : ""}`}
+        className={`sidebar flex flex-col w-56 min-w-56 text-white z-20 shrink-0 ${page === "admin" || page === "login" ? "hidden" : ""}`}
       >
         {/* ── Brand header ── */}
         <div className="px-4 pt-5 pb-4">
@@ -1203,11 +1246,11 @@ export default function App() {
                 {navActive && <div className="sidebar-nav-pill" />}
                 <Icon
                   size={15}
-                  className={`flex-shrink-0 transition-colors duration-150 ${navActive ? "text-[#6EA8FF]" : "text-white/40 group-hover:text-white/70"}`}
+                  className={`shrink-0 transition-colors duration-150 ${navActive ? "text-[#6EA8FF]" : "text-white/40 group-hover:text-white/70"}`}
                 />
                 <span className="truncate">{label}</span>
                 {navActive && (
-                  <div className="ml-auto w-1.5 h-1.5 rounded-full bg-[#6EA8FF] flex-shrink-0" />
+                  <div className="ml-auto w-1.5 h-1.5 rounded-full bg-[#6EA8FF] shrink-0" />
                 )}
               </button>
             );
@@ -1229,11 +1272,11 @@ export default function App() {
                   Density coloring
                 </span>
                 <div
-                  className={`relative w-8 h-4.5 rounded-full flex-shrink-0 toggle-track ${choroplethMode ? "bg-[#2E6BE6]" : "bg-white/15"}`}
+                  className={`relative w-8 h-4.5 rounded-full shrink-0 toggle-track ${choroplethMode ? "bg-[#2E6BE6]" : "bg-white/15"}`}
                   style={{ height: "18px", width: "32px" }}
                 >
                   <div
-                    className={`absolute top-0.5 w-3.5 h-3.5 rounded-full bg-white toggle-thumb shadow-sm ${choroplethMode ? "left-[14px]" : "left-0.5"}`}
+                    className={`absolute top-0.5 w-3.5 h-3.5 rounded-full bg-white toggle-thumb shadow-sm ${choroplethMode ? "left-3.5" : "left-0.5"}`}
                     style={{ width: "14px", height: "14px" }}
                   />
                 </div>
@@ -1246,11 +1289,11 @@ export default function App() {
                   City clusters
                 </span>
                 <div
-                  className={`relative rounded-full flex-shrink-0 toggle-track ${showClusters ? "bg-[#2E6BE6]" : "bg-white/15"}`}
+                  className={`relative rounded-full shrink-0 toggle-track ${showClusters ? "bg-[#2E6BE6]" : "bg-white/15"}`}
                   style={{ height: "18px", width: "32px" }}
                 >
                   <div
-                    className={`absolute top-0.5 w-3.5 h-3.5 rounded-full bg-white toggle-thumb shadow-sm ${showClusters ? "left-[14px]" : "left-0.5"}`}
+                    className={`absolute top-0.5 w-3.5 h-3.5 rounded-full bg-white toggle-thumb shadow-sm ${showClusters ? "left-3.5" : "left-0.5"}`}
                     style={{ width: "14px", height: "14px" }}
                   />
                 </div>
@@ -1358,13 +1401,13 @@ export default function App() {
       ) : (
         <div className="flex flex-col flex-1 overflow-hidden">
           {/* Top tabs */}
-          <nav className="flex-shrink-0 bg-white border-b border-border">
+          <nav className="shrink-0 bg-white border-b border-border">
             <div className="flex flex-wrap 2xl:flex-nowrap">
               {TABS.map((tab, i) => (
                 <button
                   key={tab.label}
                   onClick={() => setActiveTab(i)}
-                  className={`relative flex flex-shrink-0 items-center gap-1.5 px-4 2xl:px-2.5 py-3 text-xs font-medium transition-colors whitespace-nowrap
+                  className={`relative flex shrink-0 items-center gap-1.5 px-4 2xl:px-2.5 py-3 text-xs font-medium transition-colors whitespace-nowrap
                     ${activeTab === i ? "text-primary border-b-2 border-primary" : "text-muted-foreground hover:text-foreground border-b-2 border-transparent"}`}
                 >
                   <span className="flex items-baseline gap-0.5">
@@ -1405,22 +1448,24 @@ export default function App() {
                 </div>
 
                 <div className="mt-3 flex flex-wrap gap-3 pt-2">
-                  {TABS[activeTab].subTabs[activeSubTab].items.map((item) => (
-                    <label
-                      key={item.key}
-                      className="flex items-center gap-2 rounded-full border border-border bg-white px-2.5 py-1.5 cursor-pointer hover:border-primary/40 transition-colors"
-                    >
-                      <input
-                        type="checkbox"
-                        className="accent-primary w-3.5 h-3.5"
-                        checked={selectedPollutants.has(item.key)}
-                        onChange={() => togglePollutant(item.key)}
-                      />
-                      <span className="text-[11px] text-foreground/80">
-                        <Chem name={item.name} />
-                      </span>
-                    </label>
-                  ))}
+                  {(TABS[activeTab].subTabs?.[activeSubTab]?.items ?? []).map(
+                    (item) => (
+                      <label
+                        key={item.key}
+                        className="flex items-center gap-2 rounded-full border border-border bg-white px-2.5 py-1.5 cursor-pointer hover:border-primary/40 transition-colors"
+                      >
+                        <input
+                          type="checkbox"
+                          className="accent-primary w-3.5 h-3.5"
+                          checked={selectedPollutants.has(item.key)}
+                          onChange={() => togglePollutant(item.key)}
+                        />
+                        <span className="text-[11px] text-foreground/80">
+                          <Chem name={item.name} />
+                        </span>
+                      </label>
+                    ),
+                  )}
                 </div>
               </div>
             ) : TABS[activeTab]?.items && TABS[activeTab].items.length > 0 ? (
@@ -1684,7 +1729,7 @@ export default function App() {
             </div>
 
             {!isCardOnlyResearchTab && (
-              <div className="w-80 xl:w-96 flex flex-col bg-white border-l border-border overflow-hidden flex-shrink-0">
+              <div className="w-80 xl:w-96 flex flex-col bg-white border-l border-border overflow-hidden shrink-0">
                 <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-border">
                   <div className="flex items-center gap-2">
                     <CountryFlag country={selectedCountryName} />
@@ -1709,7 +1754,7 @@ export default function App() {
                       label: "Studies",
                     },
                     { val: String(countryCities.length), label: "Areas" },
-                    { val: yearRange, label: "Overall Years" },
+                    { val: countryYearRange, label: "Overall Years" },
                     { val: String(totalStudies), label: "Total in DB" },
                   ].map((s, i) => (
                     <div
@@ -1903,10 +1948,17 @@ export default function App() {
                     <>
                       <div className="divide-y divide-border/40">
                         {countryCities.map((city, idx) => (
-                          <div key={city.name} className={idx === 0 ? "" : ""}>
+                          <div
+                            key={`${city.country}-${city.name}-${idx}`}
+                            id={`city-row-${city.country}-${city.name}`}
+                            className={idx === 0 ? "" : ""}
+                          >
                             <button
                               className="flex items-center justify-between w-full px-4 py-3 hover:bg-muted/40 transition-all duration-200"
-                              onClick={() => toggleCity(city.name)}
+                              onClick={() => {
+                                toggleCity(city.name);
+                                setSelectedCityName(city.name);
+                              }}
                             >
                               <div className="flex items-center gap-2.5">
                                 <span
@@ -1921,7 +1973,7 @@ export default function App() {
                                   <div className="text-xs font-medium text-foreground">
                                     {city.name}
                                   </div>
-                                  <div className="text-[10px] text-muted-foreground max-w-[120px] truncate">
+                                  <div className="text-[10px] text-muted-foreground max-w-30 truncate">
                                     {city.settings?.join(", ")}
                                   </div>
                                 </div>

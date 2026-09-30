@@ -5,7 +5,7 @@ import { useAsync } from "./hooks/useData";
 import { useMemo } from "react";
 
 interface Props {
-  studyId: number;
+  studyId: string;
   onBack: () => void;
   onNavigateToCountry: (country: string) => void;
 }
@@ -63,7 +63,7 @@ export default function StudyDetailPage({ studyId, onBack, onNavigateToCountry }
     <div className="flex flex-col h-full w-full overflow-hidden bg-[#F7F9FC]">
 
       {/* Header */}
-      <div className="flex items-center gap-3 px-5 py-4 bg-white border-b border-border flex-shrink-0">
+      <div className="flex items-center gap-3 px-5 py-4 bg-white border-b border-border shrink-0">
         <button
           onClick={onBack}
           className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"

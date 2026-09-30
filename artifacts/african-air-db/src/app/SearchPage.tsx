@@ -133,7 +133,7 @@ function CheckGroup({
                   type="checkbox"
                   checked={selected.has(item)}
                   onChange={() => onToggle(item)}
-                  className="accent-primary w-3 h-3 flex-shrink-0"
+                  className="accent-primary w-3 h-3 shrink-0"
                 />
                 <span className="text-[11px] text-foreground/75 group-hover:text-foreground transition-colors leading-tight"><Chem name={item} /></span>
               </label>
@@ -212,7 +212,7 @@ function PollutantGroup({
 
 // ── RESULT CARD ───────────────────────────────────────────────────────────────
 
-function ResultCard({ study, index, pollutantDict, onOpen }: { study: Study; index: number; pollutantDict: Map<string, string>; onOpen?: (id: number) => void }) {
+function ResultCard({ study, index, pollutantDict, onOpen }: { study: Study; index: number; pollutantDict: Map<string, string>; onOpen?: (id: string) => void }) {
   const [saved, setSaved] = useState(false);
 
   const displayTitle = study.title || study.source || "Untitled Study";
@@ -255,7 +255,7 @@ function ResultCard({ study, index, pollutantDict, onOpen }: { study: Study; ind
           </div>
         </div>
 
-        <div className="flex flex-col items-end gap-2 flex-shrink-0">
+        <div className="flex flex-col items-end gap-2 shrink-0">
           <button
             onClick={(e) => { e.stopPropagation(); setSaved(s => !s); }}
             className={`text-[10px] px-2 py-1 rounded border transition-colors ${saved ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:border-primary hover:text-primary"}`}
@@ -270,7 +270,7 @@ function ResultCard({ study, index, pollutantDict, onOpen }: { study: Study; ind
 
 // ── MAIN COMPONENT ────────────────────────────────────────────────────────────
 
-export default function SearchPage({ onOpenStudy }: { onOpenStudy?: (id: number) => void } = {}) {
+export default function SearchPage({ onOpenStudy }: { onOpenStudy?: (id: string) => void } = {}) {
   const [filters, setFilters] = useState<Filters>(emptyFilters());
   const [sortBy, setSortBy] = useState<"yearDesc" | "yearAsc" | "relevance" | "titleAsc" | "countryAsc">("relevance");
   const [page, setPage] = useState(1);
@@ -347,7 +347,7 @@ export default function SearchPage({ onOpenStudy }: { onOpenStudy?: (id: number)
     <div className="flex h-full w-full overflow-hidden bg-background" style={{ fontFamily: "'Inter', sans-serif" }}>
 
       {/* ── FILTER SIDEBAR ── */}
-      <aside className="w-72 flex-shrink-0 flex flex-col bg-card border-r border-border overflow-hidden">
+      <aside className="w-72 shrink-0 flex flex-col bg-card border-r border-border overflow-hidden">
 
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3.5 border-b border-border bg-card">
@@ -355,7 +355,7 @@ export default function SearchPage({ onOpenStudy }: { onOpenStudy?: (id: number)
             <SlidersHorizontal size={15} className="text-primary" />
             <span className="text-sm font-semibold text-foreground">Advanced Filters</span>
             {totalActive > 0 && (
-              <span className="bg-primary text-primary-foreground text-[10px] font-bold rounded-full px-1.5 py-0.5 min-w-[18px] text-center">
+              <span className="bg-primary text-primary-foreground text-[10px] font-bold rounded-full px-1.5 py-0.5 min-w-4.5 text-center">
                 {totalActive}
               </span>
             )}
@@ -468,7 +468,7 @@ export default function SearchPage({ onOpenStudy }: { onOpenStudy?: (id: number)
       <div className="flex-1 flex flex-col overflow-hidden">
 
         {/* Search bar row */}
-        <div className="flex-shrink-0 bg-card border-b border-border px-5 py-3 flex items-center gap-3">
+        <div className="shrink-0 bg-card border-b border-border px-5 py-3 flex items-center gap-3">
           <div className="relative flex-1">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <input
@@ -486,7 +486,7 @@ export default function SearchPage({ onOpenStudy }: { onOpenStudy?: (id: number)
           </div>
 
           {/* Sort */}
-          <div className="flex items-center gap-2 flex-shrink-0">
+          <div className="flex items-center gap-2 shrink-0">
             <ArrowUpDown size={13} className="text-muted-foreground" />
             <select
               value={sortBy}
@@ -511,7 +511,7 @@ export default function SearchPage({ onOpenStudy }: { onOpenStudy?: (id: number)
               a.click();
               URL.revokeObjectURL(url);
             }}
-            className="flex items-center gap-1.5 text-xs border border-border rounded px-3 py-2 text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors flex-shrink-0"
+            className="flex items-center gap-1.5 text-xs border border-border rounded px-3 py-2 text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors shrink-0"
           >
             <Download size={12} />
             Export
@@ -521,8 +521,8 @@ export default function SearchPage({ onOpenStudy }: { onOpenStudy?: (id: number)
 
         {/* Active filter tags */}
         {activeTags.length > 0 && (
-          <div className="flex-shrink-0 px-5 py-2 border-b border-border/60 bg-background flex flex-wrap gap-1.5 items-center">
-            <Filter size={11} className="text-muted-foreground flex-shrink-0" />
+          <div className="shrink-0 px-5 py-2 border-b border-border/60 bg-background flex flex-wrap gap-1.5 items-center">
+            <Filter size={11} className="text-muted-foreground shrink-0" />
             {activeTags.map(({ key, value, rawValue, htmlValue }) => (
               <Tag key={`${key}-${rawValue || value}`} label={value} htmlLabel={htmlValue} onRemove={() => removeTag(key, rawValue || value)} />
             ))}
@@ -533,7 +533,7 @@ export default function SearchPage({ onOpenStudy }: { onOpenStudy?: (id: number)
         )}
 
         {/* Result count bar */}
-        <div id="search-results-heading" className="flex-shrink-0 px-5 py-2.5 flex items-center justify-between border-b border-border/40">
+        <div id="search-results-heading" className="shrink-0 px-5 py-2.5 flex items-center justify-between border-b border-border/40">
           <div className="flex items-center gap-2">
             <BookOpen size={13} className="text-muted-foreground" />
             <span className="text-xs text-muted-foreground">

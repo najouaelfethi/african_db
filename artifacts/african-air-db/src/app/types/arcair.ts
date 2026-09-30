@@ -54,7 +54,7 @@ export interface SamplingRecord {
 
 /** One publication (source article) in the ARC-Air database. */
 export interface Study {
-  id: number;
+  id: string;
   /** Dataset region, e.g. "Northern Africa", "Western Africa". */
   region: string;
   /** "Country of Study" column. */
@@ -101,7 +101,7 @@ export interface AreaSummary {
   studyCount: number;
   /** Site settings observed in this area, e.g. "Urban- Residential". */
   settings: string[];
-  studies: { id: number; source: string; title: string }[];
+  studies: { id: string; source: string; title: string }[];
 }
 
 /** Aggregated info for one country, used by the map side panel. */

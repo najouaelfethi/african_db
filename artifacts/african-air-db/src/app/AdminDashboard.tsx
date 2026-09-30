@@ -438,7 +438,7 @@ function DashboardTab({ onNavigate }: { onNavigate: (t: AdminTab) => void }) {
               >
                 <span className="flex min-w-0 flex-1 items-start gap-1.5">
                   <span
-                    className="w-2 h-2 rounded-full flex-shrink-0"
+                    className="w-2 h-2 rounded-full shrink-0"
                     style={{ background: PIE_COLORS[i] }}
                   />
                   <span className="text-slate-600 leading-snug">{d.full}</span>
@@ -577,7 +577,7 @@ function ResearchDataTab() {
   return (
     <div className="space-y-4">
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex flex-wrap gap-3 items-center">
-        <div className="flex items-center gap-2 bg-slate-50 rounded-xl px-3 py-2 flex-1 min-w-[200px]">
+        <div className="flex items-center gap-2 bg-slate-50 rounded-xl px-3 py-2 flex-1 min-w-50]">
           <Search size={14} className="text-slate-400" />
           <input
             value={search}
@@ -671,13 +671,13 @@ function ResearchDataTab() {
                     <td className="py-2.5 px-4 text-slate-400 tabular-nums">
                       {(page - 1) * 20 + i + 1}
                     </td>
-                    <td className="py-2.5 px-4 text-slate-700 max-w-[260px]">
+                    <td className="py-2.5 px-4 text-slate-700 max-w-65">
                       <div className="truncate font-medium">{s.title}</div>
                       <div className="text-[10px] text-slate-400 truncate">
                         {s.journal}
                       </div>
                     </td>
-                    <td className="py-2.5 px-4 text-slate-500 max-w-[140px] truncate">
+                    <td className="py-2.5 px-4 text-slate-500 max-w-35 truncate">
                       {s.author}
                     </td>
                     <td className="py-2.5 px-4 text-slate-600 whitespace-nowrap">
@@ -899,7 +899,7 @@ function DataManagementTab() {
                         {row.map((cell, j) => (
                           <td
                             key={j}
-                            className="py-2 px-3 text-slate-600 max-w-[180px] truncate"
+                            className="py-2 px-3 text-slate-600 max-w-45 truncate"
                           >
                             {cell || "Not available"}
                           </td>
@@ -1100,7 +1100,7 @@ function DataManagementTab() {
                     key={s.id}
                     className="border-b border-slate-50 hover:bg-blue-50/20"
                   >
-                    <td className="py-2.5 px-4 max-w-[300px] truncate font-medium text-slate-700">
+                    <td className="py-2.5 px-4 max-w-75 truncate font-medium text-slate-700">
                       {s.title}
                     </td>
                     <td className="py-2.5 px-4 text-slate-600 whitespace-nowrap">
@@ -1233,7 +1233,7 @@ function AnalyticsTab() {
           {VISITOR_COUNTRIES.map((v, i) => (
             <div key={v.country} className="flex items-center gap-3">
               <div
-                className="w-4 h-4 rounded-sm flex-shrink-0"
+                className="w-4 h-4 rounded-sm shrink-0"
                 style={{ background: PIE_COLORS[i % PIE_COLORS.length] }}
               />
               <div className="flex-1 flex items-center gap-3">
@@ -1440,7 +1440,7 @@ export default function AdminDashboard({
     >
       {/* ── Sidebar ── */}
       <aside
-        className="w-56 flex-shrink-0 flex flex-col"
+        className="w-56 shrink-0 flex flex-col"
         style={{ background: "#0F1724" }}
       >
         {/* Logo */}
@@ -1484,7 +1484,7 @@ export default function AdminDashboard({
         {/* User profile */}
         <div className="px-4 py-4 border-t border-white/10">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-[12px] font-bold flex-shrink-0">
+            <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-[12px] font-bold shrink-0">
               {initials}
             </div>
             <div className="flex-1 min-w-0">
@@ -1507,7 +1507,7 @@ export default function AdminDashboard({
       {/* ── Main content ── */}
       <main className="flex-1 flex flex-col overflow-hidden bg-slate-50">
         {/* Header */}
-        <header className="bg-white border-b border-slate-100 px-6 py-4 flex items-center justify-between flex-shrink-0 shadow-sm">
+        <header className="bg-white border-b border-slate-100 px-6 py-4 flex items-center justify-between shrink-0 shadow-sm">
           <div>
             <div className="text-[10px] uppercase tracking-widest text-slate-400">
               Admin · {TAB_LABELS[activeTab]}
