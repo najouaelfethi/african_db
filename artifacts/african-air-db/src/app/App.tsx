@@ -34,7 +34,6 @@ import type {
   PollutantInfo,
 } from "./types/arcair";
 import { useAsync } from "./hooks/useData";
-
 import SearchPage from "./SearchPage";
 import StudyDetailPage from "./StudyDetailPage";
 import HomePage from "./HomePage";
@@ -42,6 +41,7 @@ import { Chem, unitToHtml } from "./utils/chemFormat";
 import AdminDashboard from "./AdminDashboard";
 /*temporary adding this import*/
 import { testMapApi } from "./services/studyService";
+
 
 const MAP_CONFIG = {
   view: {
@@ -712,17 +712,14 @@ export default function App() {
       f.settings = [designFilter];
     }
     const activeTabConfig = TABS[activeTab];
-    const isStaticTab = activeTabConfig?.source === "static";
 
-    if (!isStaticTab) {
-      if (
-        selectedPollutants.size > 0 &&
-        selectedPollutants.size < (TABS[activeTab]?.keys.length || 0)
-      ) {
-        f.pollutants = Array.from(selectedPollutants);
-      } else if (TABS.length > 0 && TABS[activeTab]) {
-        f.categories = [TABS[activeTab].label];
-      }
+    if (
+      activeTabConfig &&
+      selectedPollutants.size > 0 &&
+      selectedPollutants.size < activeTabConfig.keys.length
+    ) {
+      // Send the selected API pollutant keys to the study filter.
+      f.pollutants = Array.from(selectedPollutants);
     }
     return f;
   }, [

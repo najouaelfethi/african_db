@@ -1,12 +1,3 @@
-/**
- * TypeScript data model for the ARC-Air database
- * (Air Pollution Characterization Review – Africa).
- *
- * These interfaces mirror the columns of the source dataset
- * (CSV/Excel export) so the frontend is ready for backend integration.
- * The Django REST API is expected to serve payloads with this exact shape.
- */
-
 /** One measured value cell: "Mean ( sd)" / Min / Max triple from the dataset. */
 export interface Measurement {
   /** Raw cell text as it appears in the dataset, e.g. "43.4 ( 8.9)". */

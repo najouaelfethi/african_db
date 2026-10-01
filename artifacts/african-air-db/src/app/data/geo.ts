@@ -1,12 +1,4 @@
-/**
- * Geographic lookup tables for the ARC-Air dataset.
- *
- * The dataset itself carries no coordinates, so the frontend resolves
- * study areas to map positions with this gazetteer. When the Django
- * backend later serves geocoded areas, this file can be retired.
- *
- * All coordinates are [longitude, latitude] to match the map component.
- */
+
 
 /** ISO-3166 numeric ids used by the world-atlas TopoJSON, keyed by country name. */
 export const COUNTRY_TOPO_ID: Record<string, string> = {

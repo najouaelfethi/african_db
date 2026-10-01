@@ -84,7 +84,7 @@ export default function HomePage({
   return (
     <div className="flex-1 overflow-y-auto bg-background w-full relative scroll-smooth">
       {/* Background decoration */}
-      <div className="absolute top-0 left-0 w-full h-[600px] bg-gradient-to-b from-primary/5 to-transparent pointer-events-none -z-10" />
+      <div className="absolute top-0 left-0 w-full h-150 bg-linear-to-b from-primary/5 to-transparent pointer-events-none -z-10" />
       <div className="absolute top-0 right-0 w-1/2 h-full pointer-events-none -z-10 opacity-30 mix-blend-multiply flex items-start justify-end pr-10 pt-20">
         <AfricaMapPreview static />
       </div>
@@ -650,7 +650,7 @@ function QuickAccessCard({
       `}
     >
       <div
-        className={`flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center transition-colors
+        className={`shrink-0 w-12 h-12 rounded-xl flex items-center justify-center transition-colors
         ${disabled ? "bg-muted text-muted-foreground" : "bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground"}
       `}
       >
@@ -846,7 +846,7 @@ function AfricaMapPreview({
     return (
       <svg
         viewBox={VIEW_BOX}
-        className="w-full h-auto max-w-[600px] opacity-10"
+        className="w-full h-auto max-w-150 opacity-10"
       >
         {paths.map((p) => (
           <path
@@ -876,7 +876,7 @@ function AfricaMapPreview({
   return (
     <svg
       viewBox={VIEW_BOX}
-      className="w-full h-auto max-w-[400px] drop-shadow-sm mx-auto"
+      className="w-full h-auto max-w-100 drop-shadow-sm mx-auto"
     >
       {paths.map((p) => (
         <path

@@ -9,8 +9,10 @@ import type {
   AreaSummary,
   CountrySummary,
   DatasetStats,
+  Measurement,
   PagedResult,
   PollutantInfo,
+  SamplingRecord,
   Study,
   StudyFilters,
   StudyQuery,
@@ -83,6 +85,44 @@ function getStudyYears(study: PublicApiStudy): {
     yearTo: study.end_year,
   };
 }
+function createMeasurements(
+  measurements: PublicApiMeasurement[],
+): Record<string, Measurement> {
+  const result: Record<string, Measurement> = {};
+
+  for (const measurement of measurements) {
+    result[measurement.item_name] = {
+      raw:
+        measurement.mean_value !== null ? String(measurement.mean_value) : "",
+      mean: measurement.mean_value,
+      sd: null,
+      min: measurement.min_value,
+      max: measurement.max_value,
+    };
+  }
+
+  return result;
+}
+
+function createStudyRecord(
+  study: PublicApiStudy,
+  studyArea: string,
+): SamplingRecord {
+  const allMeasurements = [
+    ...study.pollutant_measurements,
+    ...study.chemical_measurements,
+    ...study.pah_measurements,
+  ];
+
+  return {
+    id: 0,
+    studyArea,
+    methodology: study.methodology,
+    samplingPeriod: study.sampling_period_raw,
+    description: study.site_description,
+    measurements: createMeasurements(allMeasurements),
+  };
+}
 
 interface PublicApiCity {
   study_area: string;
@@ -144,56 +184,171 @@ function areaCoordinates(
     AREA_COORDINATES[`${country}|${area}`] ?? COUNTRY_CENTROIDS[country] ?? null
   );
 }
+function isParticulateMatter(itemName: string): boolean {
+  const name = itemName.trim().toUpperCase();
 
-/**
- * Pollutant catalog (keys, names, categories, units).
- * TODO(Django): GET /api/pollutants/
- */
+  return (
+    name === "PM1" ||
+    name === "PM2.5" ||
+    name === "PM10" ||
+    name === "PM2.5-10" ||
+    name === "PM10-2.5" ||
+    name === "TSP(TOTAL SUSPENDED PARTICLES)"
+  );
+}
+
+
 export async function getPollutants(): Promise<PollutantInfo[]> {
-  const data = await getPublicMapData();
+  const response = await fetch(`${PUBLIC_API_BASE}/filters`);
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch pollutants: ${response.status}`);
+  }
+
+  const data: PublicApiResponse = await response.json();
 
   const pollutants = new Map<string, PollutantInfo>();
+
+  // Categories follow the structure of the original dataset.
+  const getCategory = (itemName: string): string => {
+    // Bulk particulate matter
+    if (["PM10", "PM2.5", "PM1", "Total Suspended Particles (TSP)"].includes(itemName)) {
+      return "Bulk PM";
+    }
+
+    // Carbonaceous aerosols
+    if (
+      ["Black carbon (BC)","Organic carbon (OC)"].includes(
+        itemName,
+      )
+    ) {
+      return "Carbonaceous aerosols";
+    }
+
+    // Water soluble inorganic aerosols
+    if (
+      [
+        "NO3-",
+        "SO42-",
+        "Cl-",
+        "F-",
+        "PO43-",
+        "Oxalate (C2O42-)",
+        "NH4+",
+        "K+",
+        "Na+",
+        "Fe2+/Fe3+",
+        "Mg2+",
+        "Ca2+",
+      ].includes(itemName)
+    ) {
+      return "Water soluble inorganic aerosols";
+    }
+
+    // Trace metals
+    if (
+      [
+        "∑Trace metals",
+        "Na",
+        "Mg",
+        "Al",
+        "Si",
+        "P",
+        "Cl",
+        "K",
+        "Ca",
+        "Ti",
+        "V",
+        "Cr",
+        "Mn",
+        "Fe",
+        "Co",
+        "Ni",
+        "Cu",
+        "Zn",
+        "As",
+        "Se",
+        "Sr",
+        "Cd",
+        "Ba",
+        "Pb",
+      ].includes(itemName)
+    ) {
+      return "Trace metals";
+    }
+
+    // Organic pollutants
+    if (
+      [
+        "∑Alkanes",
+        "∑PAHs",
+        "Naphtalene",
+        "Acenaphthylene",
+        "Acenaphthene",
+        "Fluorene",
+        "Phenanthrene",
+        "Anthracene",
+        "Fluoranthene",
+        "Pyrene",
+        "Benzo[a]anthracene",
+        "Benzo[a]pyrene",
+        "Benzo[e]pyrene",
+        "Benzo[b]fluoranthene",
+        "Benzo[k]fluoranthene",
+        "Benzo[ghi]perylene",
+        "Chrysene",
+        "Dibenzo[a,h]anthracene",
+        "Indeno[1,2,3-cd]pyrene",
+        "∑PCBs",
+        "∑OCPs",
+        "VOCs",
+      ].includes(itemName)
+    ) {
+      return "Organic pollutants";
+    }
+
+    // Atmospheric gases
+    if (
+      ["NO2", "NO", "SO2", "CH4", "NMHC", "NH3", "O3", "CO"].includes(itemName)
+    ) {
+      return "Atmospheric Gases";
+    }
+
+    // Keep unknown API variables visible instead of silently dropping them.
+    return "Other";
+  };
 
   for (const country of data.countries) {
     for (const city of country.cities) {
       for (const study of city.studies) {
-        for (const measurement of study.pollutant_measurements) {
-          if (!pollutants.has(measurement.item_name)) {
-            pollutants.set(measurement.item_name, {
-              key: measurement.item_name,
-              name: measurement.item_name,
-              category: "Pollutant",
-              unit: measurement.item_unit,
-            });
-          }
-        }
+        const measurementGroups = [
+          study.pollutant_measurements,
+          study.chemical_measurements,
+          study.pah_measurements,
+        ];
 
-        for (const measurement of study.chemical_measurements) {
-          if (!pollutants.has(measurement.item_name)) {
-            pollutants.set(measurement.item_name, {
-              key: measurement.item_name,
-              name: measurement.item_name,
-              category: "Chemical",
-              unit: measurement.item_unit,
-            });
-          }
-        }
+        for (const measurements of measurementGroups) {
+          for (const measurement of measurements) {
+            const category = getCategory(measurement.item_name);
 
-        for (const measurement of study.pah_measurements) {
-          if (!pollutants.has(measurement.item_name)) {
-            pollutants.set(measurement.item_name, {
-              key: measurement.item_name,
-              name: measurement.item_name,
-              category: "PAH",
-              unit: measurement.item_unit,
-            });
+            // Keep the API item_name as the key.
+            if (!pollutants.has(measurement.item_name)) {
+              pollutants.set(measurement.item_name, {
+                key: measurement.item_name,
+                name: measurement.item_name,
+                category,
+                unit: measurement.item_unit,
+              });
+            }
           }
         }
       }
     }
   }
 
-  return [...pollutants.values()];
+  return Array.from(pollutants.values()).sort((a, b) =>
+    a.name.localeCompare(b.name),
+  );
 }
 
 export async function getPollutantsByCategory(): Promise<
@@ -416,6 +571,8 @@ export async function queryStudies(
   for (const country of data.countries) {
     for (const city of country.cities) {
       for (const apiStudy of city.studies) {
+        const { yearFrom, yearTo } = getStudyYears(apiStudy);
+
         studies.push({
           id: apiStudy.id,
           region: "",
@@ -426,9 +583,9 @@ export async function queryStudies(
           identifier: apiStudy.articles[0]?.identifier ?? "",
           title: apiStudy.title,
           dataProcessing: "",
-          yearFrom: apiStudy.start_year,
-          yearTo: apiStudy.end_year,
-          records: [],
+          yearFrom,
+          yearTo,
+          records: [createStudyRecord(apiStudy, city.study_area)],
         });
       }
     }
@@ -471,7 +628,7 @@ export async function getStudyById(id: string): Promise<Study | undefined> {
           dataProcessing: "",
           yearFrom: study.start_year,
           yearTo: study.end_year,
-          records: [],
+          records: [createStudyRecord(study, city.study_area)],
         };
       }
     }
@@ -486,12 +643,6 @@ export async function getStudyById(id: string): Promise<Study | undefined> {
 
 let countrySummariesCache: CountrySummary[] | null = null;
 
-/**
- * Country summaries with per-area aggregates for the map view.
- * Optionally filtered (same filters as queryStudies) so the map can react
- * to pollutant category filters.
- * TODO(Django): GET /api/map/countries/ (optionally with the same filter params)
- */
 export async function getCountrySummaries(
   filters?: StudyFilters,
 ): Promise<CountrySummary[]> {
@@ -524,21 +675,24 @@ export async function getCountrySummaries(
     });
 
     const studies: Study[] = country.cities.flatMap((city) =>
-      city.studies.map((study) => ({
-        // Temporary compatibility only.
-        id: study.id,
-        region: "",
-        country: country.country,
-        source: study.source,
-        author: study.articles[0]?.author ?? "",
-        journal: study.articles[0]?.journal ?? "",
-        identifier: study.articles[0]?.identifier ?? "",
-        title: study.title,
-        dataProcessing: "",
-        yearFrom: study.start_year,
-        yearTo: study.end_year,
-        records: [],
-      })),
+      city.studies.map((study) => {
+        const { yearFrom, yearTo } = getStudyYears(study);
+
+        return {
+          id: study.id,
+          region: "",
+          country: country.country,
+          source: study.source,
+          author: study.articles[0]?.author ?? "",
+          journal: study.articles[0]?.journal ?? "",
+          identifier: study.articles[0]?.identifier ?? "",
+          title: study.title,
+          dataProcessing: "",
+          yearFrom,
+          yearTo,
+          records: [createStudyRecord(study, city.study_area)],
+        };
+      }),
     );
 
     const years = studies
