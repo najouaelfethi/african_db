@@ -488,6 +488,44 @@ function CountryFlag({ country }: { country: string }) {
 }
 
 type Page = "home" | "map" | "search" | "details" | "admin" | "login";
+type InternalPage = Exclude<Page, "admin" | "login">;
+
+interface AppHistoryEntry {
+  page: InternalPage;
+  selectedStudyId: string | null;
+  detailReturnPage: InternalPage;
+}
+
+const APP_HISTORY_KEY = "arcAirDatabasePage";
+const INTERNAL_PAGES = new Set<InternalPage>([
+  "home",
+  "map",
+  "search",
+  "details",
+]);
+
+function readAppHistoryEntry(state: unknown): AppHistoryEntry | null {
+  if (typeof state !== "object" || state === null) return null;
+  const entry = (state as Record<string, unknown>)[APP_HISTORY_KEY];
+  if (typeof entry !== "object" || entry === null) return null;
+
+  const candidate = entry as Record<string, unknown>;
+  if (
+    !INTERNAL_PAGES.has(candidate.page as InternalPage) ||
+    !INTERNAL_PAGES.has(candidate.detailReturnPage as InternalPage)
+  ) {
+    return null;
+  }
+
+  return {
+    page: candidate.page as InternalPage,
+    selectedStudyId:
+      typeof candidate.selectedStudyId === "string"
+        ? candidate.selectedStudyId
+        : null,
+    detailReturnPage: candidate.detailReturnPage as InternalPage,
+  };
+}
 
 function handleTabKeyDown(
   event: ReactKeyboardEvent<HTMLButtonElement>,
@@ -534,7 +572,12 @@ export default function App() {
   const countryLayerRef = useRef<L.GeoJSON | null>(null);
   const cityLayerRef = useRef<L.LayerGroup | null>(null);
   const selectedCountryIdRef = useRef("504");
-  const [page, setPage] = useState<Page>("home");
+  const initialHistoryEntry = readAppHistoryEntry(
+    typeof window === "undefined" ? null : window.history.state,
+  );
+  const [page, setPage] = useState<Page>(
+    initialHistoryEntry?.page ?? "home",
+  );
   const [activeTab, setActiveTab] = useState(0);
   const [expanded, setExpanded] = useState<Set<string>>(new Set(["Fez"]));
   const [searchQuery, setSearchQuery] = useState("");
@@ -549,13 +592,72 @@ export default function App() {
   const [selectedCountryName, setSelectedCountryName] = useState("Morocco");
   const [choroplethMode, setChoroplethMode] = useState(true);
   const [showClusters, setShowClusters] = useState(true);
-  const [selectedStudyId, setSelectedStudyId] = useState<string | null>(null);
+  const [selectedStudyId, setSelectedStudyId] = useState<string | null>(
+    initialHistoryEntry?.selectedStudyId ?? null,
+  );
+  const detailReturnPageRef = useRef<Page>(
+    initialHistoryEntry?.detailReturnPage ?? "map",
+  );
   const [mapZoom, setMapZoom] = useState(MAP_CONFIG.view.zoom);
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
   const [adminUsername, setAdminUsername] = useState("");
   const [adminPassword, setAdminPassword] = useState("");
   const [authError, setAuthError] = useState("");
   const choroplethModeRef = useRef(choroplethMode);
+
+  useEffect(() => {
+    if (!readAppHistoryEntry(window.history.state)) {
+      const currentState =
+        window.history.state && typeof window.history.state === "object"
+          ? window.history.state
+          : {};
+      window.history.replaceState(
+        {
+          ...currentState,
+          [APP_HISTORY_KEY]: {
+            page,
+            selectedStudyId,
+            detailReturnPage: detailReturnPageRef.current as InternalPage,
+          },
+        },
+        "",
+        window.location.href,
+      );
+    }
+
+    const restorePageFromHistory = (event: PopStateEvent) => {
+      const entry = readAppHistoryEntry(event.state);
+      if (!entry) return;
+      setPage(entry.page);
+      setSelectedStudyId(entry.page === "details" ? entry.selectedStudyId : null);
+      detailReturnPageRef.current = entry.detailReturnPage;
+    };
+
+    window.addEventListener("popstate", restorePageFromHistory);
+    return () => window.removeEventListener("popstate", restorePageFromHistory);
+  }, []);
+
+  const pushInternalPage = (
+    nextPage: InternalPage,
+    nextStudyId: string | null = null,
+  ) => {
+    const currentState =
+      window.history.state && typeof window.history.state === "object"
+        ? window.history.state
+        : {};
+    const entry: AppHistoryEntry = {
+      page: nextPage,
+      selectedStudyId: nextPage === "details" ? nextStudyId : null,
+      detailReturnPage: detailReturnPageRef.current as InternalPage,
+    };
+    window.history.pushState(
+      { ...currentState, [APP_HISTORY_KEY]: entry },
+      "",
+      window.location.href,
+    );
+    setPage(nextPage);
+    setSelectedStudyId(entry.selectedStudyId);
+  };
 
   const STATIC_RESEARCH_TABS = useMemo(() => {
     const organicCompoundKeys = new Set([
@@ -800,7 +902,10 @@ export default function App() {
       : "No data";
   const allFilteredStudiesCount =
     countrySummariesData?.reduce((acc, c) => acc + c.studyCount, 0) ?? 0;
-  const visibleMapCities = countrySummariesData?.flatMap((c) => c.areas) ?? [];
+  const visibleMapCities =
+    countrySummariesData
+      ?.flatMap((c) => c.areas)
+      .filter((area) => area.hasPreciseCoordinates) ?? [];
 
   const yearRange =
     stats && stats.yearFrom && stats.yearTo
@@ -814,11 +919,12 @@ export default function App() {
   );
 
   const navigateToPage = (id: Page) => {
-    if (id === "admin" && !isAdminAuthenticated) {
-      setPage("login");
+    if (id === "admin") {
+      setPage(isAdminAuthenticated ? "admin" : "login");
       return;
     }
-    setPage(id);
+    if (id === "login" || id === page) return;
+    pushInternalPage(id);
   };
 
   const handleAdminLogin = () => {
@@ -1100,13 +1206,12 @@ export default function App() {
   const zoomOut = () => mapRef.current?.zoomOut(0.75);
 
   const openStudyDetail = (study: { id: string }) => {
-    setSelectedStudyId(study.id);
-    setPage("details");
+    detailReturnPageRef.current = page === "search" ? "search" : "map";
+    pushInternalPage("details", study.id);
   };
 
   const closeStudyDetail = () => {
-    setSelectedStudyId(null);
-    setPage("map");
+    window.history.back();
   };
 
   const navigateToCountry = (country: string) => {
@@ -1116,7 +1221,7 @@ export default function App() {
       setSelectedCountryId(id);
       setSelectedCountryName(country);
     }
-    setPage("map");
+    navigateToPage("map");
   };
 
   const NAV = [
@@ -1282,18 +1387,31 @@ export default function App() {
       {page === "home" ? (
         <HomePage
           stats={stats}
-          onGoHome={() => setPage("home")}
-          onExploreMap={() => setPage("map")}
-          onBrowseResearch={() => setPage("search")}
+          onGoHome={() => navigateToPage("home")}
+          onExploreMap={() => navigateToPage("map")}
+          onBrowseResearch={() => navigateToPage("search")}
           onAdmin={() => setPage("login")}
         />
-      ) : page === "search" ? (
-        <SearchPage
-          onOpenStudy={(id) => {
-            setSelectedStudyId(id);
-            setPage("details");
-          }}
-        />
+      ) : page === "search" ||
+        (page === "details" && detailReturnPageRef.current === "search") ? (
+        <>
+          <div
+            className={`flex-1 min-w-0 min-h-0 ${
+              page === "search" ? "flex" : "hidden"
+            }`}
+          >
+            <SearchPage
+              onOpenStudy={(id) => openStudyDetail({ id })}
+            />
+          </div>
+          {page === "details" && selectedStudyId && (
+            <StudyDetailPage
+              studyId={selectedStudyId}
+              onBack={closeStudyDetail}
+              onNavigateToCountry={navigateToCountry}
+            />
+          )}
+        </>
       ) : page === "details" && selectedStudyId ? (
         <StudyDetailPage
           studyId={selectedStudyId}

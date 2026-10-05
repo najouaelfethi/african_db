@@ -241,9 +241,7 @@ function areaCoordinates(
   country: string,
   area: string,
 ): [number, number] | null {
-  return (
-    AREA_COORDINATES[`${country}|${area}`] ?? COUNTRY_CENTROIDS[country] ?? null
-  );
+  return AREA_COORDINATES[`${country}|${area}`] ?? null;
 }
 
 function countryCoordinates(country: string): [number, number] | null {
@@ -780,10 +778,11 @@ export async function getCountrySummaries(
     const countryName = canonicalCountryName(country.country);
     const cityStudies = country.cities.map((city) => {
       const areaName = canonicalAreaName(city.study_area);
-      const coordinates =
+      const preciseCoordinates =
         areaCoordinates(countryName, areaName) ??
-        areaCoordinates(countryName, city.study_area) ??
-        countryCoordinates(countryName);
+        areaCoordinates(countryName, city.study_area);
+      const coordinates =
+        preciseCoordinates ?? countryCoordinates(countryName);
 
       const studies: Study[] = city.studies.map((study) => {
         const { yearFrom, yearTo } = getStudyYears(study);
@@ -809,7 +808,13 @@ export async function getCountrySummaries(
           ? studies.filter((study) => matchesFilters(study, filters!))
           : studies;
 
-      return { city, areaName, coordinates, matchingStudies };
+      return {
+        city,
+        areaName,
+        coordinates,
+        hasPreciseCoordinates: preciseCoordinates !== null,
+        matchingStudies,
+      };
     });
 
     const studies = cityStudies.flatMap(({ matchingStudies }) => matchingStudies);
@@ -817,10 +822,11 @@ export async function getCountrySummaries(
       .filter(({ matchingStudies }) =>
         hasActiveFilters ? matchingStudies.length > 0 : true,
       )
-      .map(({ areaName, coordinates, matchingStudies }) => ({
+       .map(({ areaName, coordinates, hasPreciseCoordinates, matchingStudies }) => ({
         name: areaName,
         country: countryName,
         coordinates: coordinates ?? [0, 0],
+        hasPreciseCoordinates,
         studyCount: matchingStudies.length,
         settings: [],
         studies: matchingStudies.map((study) => ({

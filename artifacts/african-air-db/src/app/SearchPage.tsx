@@ -8,6 +8,7 @@ import {
 import { useAsync } from "./hooks/useData";
 import { Chem, chemToHtml, unitToHtml } from "./utils/chemFormat";
 import { queryStudies, getPollutantsByCategory, getCountrySummaries, getPublicationYearRange } from "./services/studyService";
+import { buildStudyCsv } from "./utils/studyExport";
 import type { Study, StudyFilters, StudyQuery, PagedResult } from "./types/arcair";
 
 // ── TYPES ─────────────────────────────────────────────────────────────────────
@@ -206,6 +207,9 @@ export default function SearchPage({ onOpenStudy }: { onOpenStudy?: (id: string)
   const [filters, setFilters] = useState<Filters>(emptyFilters());
   const [sortBy, setSortBy] = useState<"yearDesc" | "yearAsc" | "relevance" | "titleAsc" | "countryAsc">("relevance");
   const [page, setPage] = useState(1);
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportMessage, setExportMessage] = useState("");
+  const [exportError, setExportError] = useState(false);
   const PAGE_SIZE = 20;
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({
     geo: false, pollutants: false, range: false,
@@ -244,10 +248,67 @@ export default function SearchPage({ onOpenStudy }: { onOpenStudy?: (id: string)
     setPage(1);
   }, [activeQueryFilters, sortBy]);
 
-  const { data: pageResult } = useAsync(
+  const { data: pageResult, loading: resultsLoading } = useAsync(
     () => queryStudies({ filters: activeQueryFilters, sort: sortBy, page, pageSize: PAGE_SIZE }),
     [activeQueryFilters, sortBy, page],
   );
+  const results = pageResult?.items || [];
+  const totalItems = pageResult?.total || 0;
+
+  useEffect(() => {
+    setExportMessage("");
+    setExportError(false);
+  }, [activeQueryFilters, sortBy]);
+
+  const exportFilteredStudies = useCallback(async () => {
+    if (isExporting || resultsLoading || totalItems === 0) return;
+
+    setIsExporting(true);
+    setExportMessage("");
+    setExportError(false);
+
+    try {
+      const exportResult = await queryStudies({
+        filters: activeQueryFilters,
+        sort: sortBy,
+        page: 1,
+        pageSize: Math.max(totalItems, 1),
+      });
+      const pollutantInfo = new Map(
+        (categoriesData ?? []).flatMap(({ pollutants }) =>
+          pollutants.map(({ key, name, unit }) => [key, { name, unit }] as const),
+        ),
+      );
+      const csv = buildStudyCsv(exportResult.items, pollutantInfo);
+      const blob = new Blob(["\uFEFF", csv], {
+        type: "text/csv;charset=utf-8",
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `arcair-research-${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      setExportMessage(
+        `Downloaded ${exportResult.total} filtered studies as a CSV file.`,
+      );
+    } catch (error) {
+      console.error("Research export failed:", error);
+      setExportError(true);
+      setExportMessage("Export failed. Please try again.");
+    } finally {
+      setIsExporting(false);
+    }
+  }, [
+    activeQueryFilters,
+    categoriesData,
+    isExporting,
+    resultsLoading,
+    sortBy,
+    totalItems,
+  ]);
 
   const toggleCollapse = (key: string) =>
     setCollapsed(prev => ({ ...prev, [key]: !prev[key] }));
@@ -270,9 +331,6 @@ export default function SearchPage({ onOpenStudy }: { onOpenStudy?: (id: string)
 
   const resetAll = () =>
     setFilters(emptyFilters(publicationYearRange ?? DEFAULT_PUBLICATION_YEAR_RANGE));
-
-  const results = pageResult?.items || [];
-  const totalItems = pageResult?.total || 0;
 
   // Active tags
   const activeTags: { key: keyof Filters; value: string; rawValue?: string; htmlValue?: string }[] = [
@@ -438,21 +496,27 @@ export default function SearchPage({ onOpenStudy }: { onOpenStudy?: (id: string)
             </select>
           </div>
 
-          <button
-            onClick={() => {
-              const blob = new Blob([JSON.stringify(results, null, 2)], { type: "application/json" });
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement("a");
-              a.href = url;
-              a.download = `arc-studies-${new Date().toISOString().slice(0, 10)}.json`;
-              a.click();
-              URL.revokeObjectURL(url);
-            }}
-            className="flex items-center gap-1.5 text-xs border border-border rounded px-3 py-2 text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors shrink-0"
-          >
-            <Download size={12} />
-            Export
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            {exportMessage && (
+              <span
+                className={exportError ? "text-[11px] text-destructive" : "sr-only"}
+                role={exportError ? "alert" : "status"}
+                aria-live="polite"
+              >
+                {exportMessage}
+              </span>
+            )}
+            <button
+              onClick={exportFilteredStudies}
+              disabled={resultsLoading || isExporting || totalItems === 0}
+              title="Download all studies matching the current filters as a spreadsheet-friendly CSV"
+              aria-label={`Export all ${totalItems} filtered studies as CSV`}
+              className="flex items-center gap-1.5 text-xs border border-border rounded px-3 py-2 text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors shrink-0 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Download size={12} />
+              {isExporting ? "Preparing CSV…" : "Export CSV"}
+            </button>
+          </div>
 
         </div>
 

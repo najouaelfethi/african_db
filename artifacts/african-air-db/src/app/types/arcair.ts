@@ -90,6 +90,8 @@ export interface AreaSummary {
   country: string;
   /** [longitude, latitude] to match Leaflet usage in the map component. */
   coordinates: [number, number];
+  /** True only when this area has a mapped location, not a country-center estimate. */
+  hasPreciseCoordinates: boolean;
   /** Number of studies with at least one record in this area. */
   studyCount: number;
   /** Site settings observed in this area, e.g. "Urban- Residential". */
