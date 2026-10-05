@@ -2,12 +2,12 @@ import { useState, useCallback, useMemo, useEffect } from "react";
 import {
   Search, X, ChevronDown, ChevronUp, ChevronRight, SlidersHorizontal,
   RotateCcw, Download, BookOpen, CalendarRange, Users,
-  MapPin, FlaskConical, Microscope, FileText, ArrowUpDown,
+  MapPin, FlaskConical, Microscope, ArrowUpDown,
   Filter, CheckSquare, Square,
 } from "lucide-react";
 import { useAsync } from "./hooks/useData";
 import { Chem, chemToHtml, unitToHtml } from "./utils/chemFormat";
-import { queryStudies, getRegions, getPollutantsByCategory, getSettings, getCountrySummaries } from "./services/studyService";
+import { queryStudies, getPollutantsByCategory, getCountrySummaries } from "./services/studyService";
 import type { Study, StudyFilters, StudyQuery, PagedResult } from "./types/arcair";
 
 // ── TYPES ─────────────────────────────────────────────────────────────────────
@@ -15,9 +15,7 @@ import type { Study, StudyFilters, StudyQuery, PagedResult } from "./types/arcai
 interface Filters {
   query: string;
   countries: Set<string>;
-  regions: Set<string>;
   pollutants: Set<string>;
-  settings: Set<string>;
   yearFrom: number;
   yearTo: number;
 }
@@ -26,9 +24,7 @@ function emptyFilters(): Filters {
   return {
     query: "",
     countries: new Set(),
-    regions: new Set(),
     pollutants: new Set(),
-    settings: new Set(),
     // Dataset sampling-year bounds (see getDatasetStats)
     yearFrom: 1996,
     yearTo: 2023,
@@ -276,21 +272,17 @@ export default function SearchPage({ onOpenStudy }: { onOpenStudy?: (id: string)
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 20;
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({
-    geo: false, pollutants: false, settings: true, range: false,
+    geo: false, pollutants: false, range: false,
   });
 
-  const { data: regionsData } = useAsync(getRegions);
   const { data: categoriesData } = useAsync(getPollutantsByCategory);
-  const { data: settingsData } = useAsync(getSettings);
   const { data: countriesData } = useAsync(getCountrySummaries);
 
   const activeQueryFilters = useMemo<StudyFilters>(() => {
     const f: StudyFilters = {};
     if (filters.query) f.query = filters.query;
     if (filters.countries.size > 0) f.countries = Array.from(filters.countries);
-    if (filters.regions.size > 0) f.regions = Array.from(filters.regions);
     if (filters.pollutants.size > 0) f.pollutants = Array.from(filters.pollutants);
-    if (filters.settings.size > 0) f.settings = Array.from(filters.settings);
     if (filters.yearFrom > 1996) f.yearFrom = filters.yearFrom;
     if (filters.yearTo < 2023) f.yearTo = filters.yearTo;
     return f;
@@ -337,8 +329,6 @@ export default function SearchPage({ onOpenStudy }: { onOpenStudy?: (id: string)
       const pName = categoriesData?.flatMap(c => c.pollutants).find(p => p.key === v)?.name || v;
       return { key: "pollutants" as keyof Filters, value: pName, rawValue: v, htmlValue: chemToHtml(pName) };
     }),
-    ...[...filters.settings].map(v => ({ key: "settings" as keyof Filters, value: v })),
-    ...[...filters.regions].map(v => ({ key: "regions" as keyof Filters, value: v })),
   ];
 
   const totalActive = activeTags.length;
@@ -402,9 +392,9 @@ export default function SearchPage({ onOpenStudy }: { onOpenStudy?: (id: string)
               <div className="flex items-center gap-2">
                 <MapPin size={13} className="text-muted-foreground" />
                 <span className="text-xs font-semibold text-foreground">Geography</span>
-                {(filters.countries.size + filters.regions.size) > 0 && (
+                {filters.countries.size > 0 && (
                   <span className="bg-primary text-primary-foreground rounded-full text-[9px] w-4 h-4 flex items-center justify-center font-bold">
-                    {filters.countries.size + filters.regions.size}
+                    {filters.countries.size}
                   </span>
                 )}
               </div>
@@ -412,17 +402,6 @@ export default function SearchPage({ onOpenStudy }: { onOpenStudy?: (id: string)
             </button>
             {!collapsed.geo && (
               <div className="px-4 pb-3 space-y-3">
-                <div>
-                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Region</p>
-                  <div className="grid grid-cols-1 gap-0.5">
-                    {(regionsData || []).map(r => (
-                      <label key={r} className="flex items-center gap-2 py-0.5 cursor-pointer group">
-                        <input type="checkbox" checked={filters.regions.has(r)} onChange={() => toggleSet("regions", r)} className="accent-primary w-3 h-3" />
-                        <span className="text-[11px] text-foreground/75 group-hover:text-foreground">{r}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
                 <div>
                   <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Country</p>
                   <div className="relative mb-1.5">
@@ -443,14 +422,6 @@ export default function SearchPage({ onOpenStudy }: { onOpenStudy?: (id: string)
             pollutantCategories={categoriesData || []}
           />
 
-          {/* Settings */}
-          <CheckGroup
-            title="Monitoring Setting" icon={FileText}
-            items={settingsData || []} selected={filters.settings}
-            onToggle={v => toggleSet("settings", v)}
-            collapsed={collapsed.settings} onCollapse={() => toggleCollapse("settings")}
-            searchable
-          />
         </div>
 
         {/* Apply CTA */}
