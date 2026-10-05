@@ -140,6 +140,8 @@ interface PublicApiResponse {
 }
 
 interface PublicApiStatistics {
+  total_measurements?: unknown;
+  total_variables?: unknown;
   year_range?: {
     min?: unknown;
     max?: unknown;
@@ -151,12 +153,7 @@ async function getPublicMapData(): Promise<PublicApiResponse> {
 }
 
 export async function getPublicationYearRange(): Promise<{ min: number; max: number }> {
-  const response = await fetch(`${PUBLIC_API_BASE}/statistics`);
-  if (!response.ok) {
-    throw new Error(`Statistics API error: ${response.status}`);
-  }
-
-  const statistics = (await response.json()) as PublicApiStatistics;
+  const statistics = await fetchPublicStatistics();
   const { min, max } = statistics.year_range ?? {};
   if (
     typeof min !== "number" ||
@@ -169,6 +166,43 @@ export async function getPublicationYearRange(): Promise<{ min: number; max: num
   }
 
   return { min, max };
+}
+
+export async function getPublicStatisticsCounts(): Promise<{
+  totalMeasurements: number;
+  totalVariables: number;
+}> {
+  const statistics = await fetchPublicStatistics();
+  const { total_measurements, total_variables } = statistics;
+  if (
+    typeof total_measurements !== "number" ||
+    !Number.isSafeInteger(total_measurements) ||
+    total_measurements < 0 ||
+    typeof total_variables !== "number" ||
+    !Number.isSafeInteger(total_variables) ||
+    total_variables < 0
+  ) {
+    throw new Error("Statistics API returned invalid measurement or variable totals");
+  }
+
+  return {
+    totalMeasurements: total_measurements,
+    totalVariables: total_variables,
+  };
+}
+
+async function fetchPublicStatistics(): Promise<PublicApiStatistics> {
+  const response = await fetch(`${PUBLIC_API_BASE}/statistics`);
+  if (!response.ok) {
+    throw new Error(`Statistics API error: ${response.status}`);
+  }
+
+  const payload: unknown = await response.json();
+  if (typeof payload !== "object" || payload === null) {
+    throw new Error("Statistics API returned an invalid response");
+  }
+
+  return payload as PublicApiStatistics;
 }
 
 /*Test API temporary*/

@@ -13,7 +13,10 @@ import {
 } from "lucide-react";
 import type { DatasetStats } from "./types/arcair";
 import { useAsync } from "./hooks/useData";
-import { getCountrySummaries } from "./services/studyService";
+import {
+  getCountrySummaries,
+  getPublicStatisticsCounts,
+} from "./services/studyService";
 import AnalyticsCharts from "./components/AnalyticsCharts";
 import { feature, merge } from "topojson-client";
 import countriesTopology from "world-atlas/countries-50m.json";
@@ -77,6 +80,14 @@ export default function HomePage({
   onBrowseResearch,
   onAdmin,
 }: HomePageProps) {
+  const {
+    data: publicStatisticsCounts,
+    error: publicStatisticsCountsError,
+  } = useAsync(getPublicStatisticsCounts, []);
+  const totalMeasurements = useCountUp(
+    publicStatisticsCounts?.totalMeasurements,
+  );
+  const totalVariables = useCountUp(publicStatisticsCounts?.totalVariables);
   const yearRange =
     stats?.yearFrom && stats?.yearTo
       ? `${stats.yearFrom}-${stats.yearTo}`
@@ -134,8 +145,13 @@ export default function HomePage({
             />
             <StatCard
               icon={Database}
-              label="Sampling Records"
-              value={useCountUp(stats?.recordCount)}
+              label="Total Measurements"
+              value={
+                publicStatisticsCounts ? totalMeasurements : undefined
+              }
+              staticValue={
+                publicStatisticsCountsError ? "N/A" : undefined
+              }
             />
             <StatCard
               icon={Globe2}
@@ -145,7 +161,12 @@ export default function HomePage({
             <StatCard
               icon={FlaskConical}
               label="Monitored Parameters"
-              value={useCountUp(stats?.pollutantCount)}
+              value={
+                publicStatisticsCounts ? totalVariables : undefined
+              }
+              staticValue={
+                publicStatisticsCountsError ? "N/A" : undefined
+              }
             />
             <StatCard
               icon={Calendar}
