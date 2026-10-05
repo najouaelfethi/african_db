@@ -724,6 +724,32 @@ export default function App() {
     });
   };
 
+  const activeMeasureItems =
+    TABS[activeTab]?.source === "static"
+      ? (TABS[activeTab].subTabs?.[activeSubTab]?.items ?? [])
+      : [];
+  const selectedActiveMeasureCount = activeMeasureItems.reduce(
+    (count, item) => count + Number(selectedPollutants.has(item.key)),
+    0,
+  );
+  const allActiveMeasuresSelected =
+    activeMeasureItems.length > 0 &&
+    selectedActiveMeasureCount === activeMeasureItems.length;
+
+  const setActiveMeasureSelection = (selectAll: boolean) => {
+    if (activeMeasureItems.length === 0) return;
+
+    setHasUserChangedPollutants(true);
+    setSelectedPollutants((prev) => {
+      const next = new Set(prev);
+      activeMeasureItems.forEach(({ key }) => {
+        if (selectAll) next.add(key);
+        else next.delete(key);
+      });
+      return next;
+    });
+  };
+
   const activeFilters = useMemo<StudyFilters>(() => {
     const f: StudyFilters = {};
     if (searchQuery) f.query = searchQuery;
@@ -1463,7 +1489,7 @@ export default function App() {
                 role="tabpanel"
                 aria-labelledby={`research-category-tab-${activeTab}`}
                 tabIndex={0}
-                className="border-t border-border/60 bg-[#F5F8FF] px-3 py-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-primary sm:px-4"
+                className="border-t border-border/60 bg-[#F5F8FF] px-3 py-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-primary sm:px-4"
               >
                 {TABS[activeTab].source === "static" &&
                 (TABS[activeTab].subTabs?.length ?? 0) > 0 ? (
@@ -1471,7 +1497,7 @@ export default function App() {
                     <div
                       role="tablist"
                       aria-label={`${TABS[activeTab].label} subcategories`}
-                      className="flex flex-wrap gap-2"
+                      className="flex flex-wrap items-center gap-1.5"
                     >
                       {TABS[activeTab].subTabs?.map((subTab, idx) => (
                         <button
@@ -1491,10 +1517,10 @@ export default function App() {
                               setActiveSubTab,
                             )
                           }
-                          className={`min-h-9 rounded-full border px-3 py-1.5 text-[11px] font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
+                          className={`min-h-8 rounded-md border px-2.5 py-1 text-[11px] font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
                             activeSubTab === idx
-                              ? "border-primary bg-primary text-white shadow-sm"
-                              : "border-border bg-white text-foreground hover:border-primary/50 hover:bg-white hover:text-primary"
+                              ? "border-primary/20 bg-white text-primary shadow-sm"
+                              : "border-transparent text-muted-foreground hover:bg-white/75 hover:text-foreground"
                           }`}
                         >
                           {subTab.label}
@@ -1507,22 +1533,59 @@ export default function App() {
                       role="tabpanel"
                       aria-labelledby={`research-subcategory-tab-${activeSubTab}`}
                       tabIndex={0}
-                      className="mt-3 border-t border-border/60 pt-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-primary"
+                      className="mt-2 border-t border-border/60 pt-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-primary"
                     >
-                      <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                        Available measures
+                      <div className="mb-1.5 flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                          <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                            Available measures
+                          </span>
+                          <span
+                            role="status"
+                            aria-live="polite"
+                            className="rounded-full bg-white/90 px-2 py-0.5 text-[11px] font-medium text-foreground/70"
+                          >
+                            {selectedActiveMeasureCount} of{" "}
+                            {activeMeasureItems.length} selected
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => setActiveMeasureSelection(true)}
+                            disabled={
+                              activeMeasureItems.length === 0 ||
+                              allActiveMeasuresSelected
+                            }
+                            className="rounded px-2 py-1 text-[11px] font-medium text-primary transition-colors hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary disabled:cursor-not-allowed disabled:text-muted-foreground/50 disabled:hover:bg-transparent"
+                          >
+                            Select all
+                          </button>
+                          <span
+                            aria-hidden="true"
+                            className="text-[10px] text-border"
+                          >
+                            /
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setActiveMeasureSelection(false)}
+                            disabled={selectedActiveMeasureCount === 0}
+                            className="rounded px-2 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-white hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary disabled:cursor-not-allowed disabled:text-muted-foreground/50 disabled:hover:bg-transparent"
+                          >
+                            Clear
+                          </button>
+                        </div>
                       </div>
-                      <div className="flex flex-wrap gap-2">
-                        {(
-                          TABS[activeTab].subTabs?.[activeSubTab]?.items ?? []
-                        ).map((item) => (
+                      <div className="flex flex-wrap gap-x-1 gap-y-0.5">
+                        {activeMeasureItems.map((item) => (
                           <label
                             key={item.key}
-                            className="flex min-h-9 cursor-pointer items-center gap-2 rounded-full border border-border bg-white px-3 py-1.5 transition-colors hover:border-primary/50"
+                            className="flex min-h-8 cursor-pointer items-center gap-1.5 rounded-md border border-transparent px-2 py-1 transition-colors hover:bg-white/80"
                           >
                             <input
                               type="checkbox"
-                              className="h-4 w-4 accent-primary"
+                              className="h-3.5 w-3.5 accent-primary"
                               checked={selectedPollutants.has(item.key)}
                               onChange={() => togglePollutant(item.key)}
                             />
@@ -1810,7 +1873,7 @@ export default function App() {
             </div>
 
             {!isCardOnlyResearchTab && (
-              <div className="w-80 xl:w-96 flex flex-col bg-white border-l border-border overflow-hidden shrink-0">
+              <div className="w-80 flex flex-col bg-white border-l border-border overflow-hidden shrink-0">
                 <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-border">
                   <div className="flex items-center gap-2">
                     <CountryFlag country={selectedCountryName} />
