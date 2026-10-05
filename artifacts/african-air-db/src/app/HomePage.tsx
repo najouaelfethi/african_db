@@ -14,6 +14,7 @@ import {
 import type { DatasetStats } from "./types/arcair";
 import { useAsync } from "./hooks/useData";
 import { getCountrySummaries } from "./services/studyService";
+import AnalyticsCharts from "./components/AnalyticsCharts";
 import { feature, merge } from "topojson-client";
 import countriesTopology from "world-atlas/countries-50m.json";
 import um6p_logo from "../assets/um6p-logo-arc-air.png";
@@ -153,6 +154,8 @@ export default function HomePage({
             />
           </div>
         </section>
+
+        <AnalyticsCharts />
 
         {/* About the Database */}
         <section className="space-y-8">
