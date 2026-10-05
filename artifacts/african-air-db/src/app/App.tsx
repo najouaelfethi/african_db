@@ -1,4 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+} from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import africaGeoJSON from "./data/africa-countries.json";
@@ -479,6 +485,40 @@ function CountryFlag({ country }: { country: string }) {
 }
 
 type Page = "home" | "map" | "search" | "details" | "admin" | "login";
+
+function handleTabKeyDown(
+  event: ReactKeyboardEvent<HTMLButtonElement>,
+  currentIndex: number,
+  tabCount: number,
+  onSelect: (index: number) => void,
+) {
+  if (tabCount === 0) return;
+
+  let nextIndex: number;
+  switch (event.key) {
+    case "ArrowRight":
+      nextIndex = (currentIndex + 1) % tabCount;
+      break;
+    case "ArrowLeft":
+      nextIndex = (currentIndex - 1 + tabCount) % tabCount;
+      break;
+    case "Home":
+      nextIndex = 0;
+      break;
+    case "End":
+      nextIndex = tabCount - 1;
+      break;
+    default:
+      return;
+  }
+
+  event.preventDefault();
+  onSelect(nextIndex);
+  event.currentTarget
+    .closest('[role="tablist"]')
+    ?.querySelectorAll<HTMLButtonElement>('[role="tab"]')[nextIndex]
+    ?.focus();
+}
 
 export default function App() {
   /**temporary adding this */
@@ -1189,33 +1229,37 @@ export default function App() {
         </div>
 
         {/* ── Primary navigation ── */}
-        <nav className="px-3 flex flex-col gap-0.5 mt-1">
+        <nav
+          aria-label="Primary navigation"
+          className="px-3 flex flex-col gap-0.5 mt-1"
+        >
           <div className="text-[10px] font-semibold tracking-widest text-white/30 uppercase px-2 mb-1.5">
             Navigate
           </div>
           {NAV.map(({ id, icon: Icon, label }) => {
             const isActive =
               page === id || (id === "map" && page === "details");
-            const navActive = page === id;
             return (
               <button
                 key={id}
+                type="button"
                 onClick={() => navigateToPage(id)}
-                className={`sidebar-nav-item group relative flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-[13px] transition-all duration-150 text-left
+                aria-current={isActive ? "page" : undefined}
+                className={`sidebar-nav-item group relative flex min-h-11 items-center gap-3 w-full px-3 py-2.5 rounded-lg text-[13px] transition-all duration-150 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8AB7FF]
                   ${
-                    navActive
+                    isActive
                       ? "bg-white/12 text-white font-medium shadow-sm"
                       : "text-white/55 hover:text-white/90 hover:bg-white/7"
                   }
                 `}
               >
-                {navActive && <div className="sidebar-nav-pill" />}
+                {isActive && <div className="sidebar-nav-pill" />}
                 <Icon
                   size={15}
-                  className={`shrink-0 transition-colors duration-150 ${navActive ? "text-[#6EA8FF]" : "text-white/40 group-hover:text-white/70"}`}
+                  className={`shrink-0 transition-colors duration-150 ${isActive ? "text-[#6EA8FF]" : "text-white/40 group-hover:text-white/70"}`}
                 />
                 <span className="truncate">{label}</span>
-                {navActive && (
+                {isActive && (
                   <div className="ml-auto w-1.5 h-1.5 rounded-full bg-[#6EA8FF] shrink-0" />
                 )}
               </button>
@@ -1366,94 +1410,165 @@ export default function App() {
         />
       ) : (
         <div className="flex flex-col flex-1 overflow-hidden">
-          {/* Top tabs */}
-          <nav className="shrink-0 bg-white border-b border-border">
-            <div className="flex flex-wrap 2xl:flex-nowrap">
-              {TABS.map((tab, i) => (
-                <button
-                  key={tab.label}
-                  onClick={() => setActiveTab(i)}
-                  className={`relative flex shrink-0 items-center gap-1.5 px-4 2xl:px-2.5 py-3 text-xs font-medium transition-colors whitespace-nowrap
-                    ${activeTab === i ? "text-primary border-b-2 border-primary" : "text-muted-foreground hover:text-foreground border-b-2 border-transparent"}`}
-                >
-                  <span className="flex items-baseline gap-0.5">
-                    {tab.label}
-                    {tab.unit && (
-                      <span
-                        className="text-[9px] font-normal opacity-50"
-                        dangerouslySetInnerHTML={{
-                          __html: `(${unitToHtml(tab.unit)})`,
-                        }}
-                      />
-                    )}
-                  </span>
-                  {tab.items && tab.items.length > 0 && (
-                    <ChevronDown size={11} />
-                  )}
-                </button>
-              ))}
+          {/* Research category tabs and their filters */}
+          <nav
+            aria-label="Research categories and filters"
+            className="z-10 shrink-0 border-b border-border bg-white"
+          >
+            <div className="overflow-x-auto overscroll-x-contain">
+              <div
+                role="tablist"
+                aria-label="Research categories"
+                className="flex w-max min-w-full flex-nowrap px-2 sm:px-3"
+              >
+                {TABS.map((tab, i) => (
+                  <button
+                    key={tab.label}
+                    id={`research-category-tab-${i}`}
+                    type="button"
+                    role="tab"
+                    aria-selected={activeTab === i}
+                    aria-controls="research-category-panel"
+                    tabIndex={activeTab === i ? 0 : -1}
+                    onClick={() => setActiveTab(i)}
+                    onKeyDown={(event) =>
+                      handleTabKeyDown(event, i, TABS.length, setActiveTab)
+                    }
+                    className={`relative flex min-h-11 shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 px-4 py-3 text-xs font-medium transition-colors focus-visible:z-10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary
+                      ${
+                        activeTab === i
+                          ? "border-primary bg-primary/[0.04] text-primary"
+                          : "border-transparent text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                      }`}
+                  >
+                    <span className="flex items-baseline gap-0.5">
+                      {tab.label}
+                      {tab.unit && (
+                        <span
+                          className="text-[9px] font-normal opacity-50"
+                          dangerouslySetInnerHTML={{
+                            __html: `(${unitToHtml(tab.unit)})`,
+                          }}
+                        />
+                      )}
+                    </span>
+                  </button>
+                ))}
+              </div>
             </div>
 
-            {TABS[activeTab]?.source === "static" && TABS[activeTab].subTabs ? (
-              <div className="border-t border-border/50 bg-[#F5F8FF] px-4 py-2.5">
-                <div className="flex flex-wrap gap-2">
-                  {TABS[activeTab].subTabs.map((subTab, idx) => (
-                    <button
-                      key={subTab.label}
-                      type="button"
-                      onClick={() => setActiveSubTab(idx)}
-                      className={`rounded-full border px-3 py-1.5 text-[11px] font-medium transition-all ${
-                        activeSubTab === idx
-                          ? "border-primary bg-primary text-white shadow-sm"
-                          : "border-border bg-white text-foreground hover:border-primary/40 hover:text-primary"
-                      }`}
+            {TABS[activeTab] && (
+              <div
+                id="research-category-panel"
+                role="tabpanel"
+                aria-labelledby={`research-category-tab-${activeTab}`}
+                tabIndex={0}
+                className="border-t border-border/60 bg-[#F5F8FF] px-3 py-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-primary sm:px-4"
+              >
+                {TABS[activeTab].source === "static" &&
+                (TABS[activeTab].subTabs?.length ?? 0) > 0 ? (
+                  <>
+                    <div
+                      role="tablist"
+                      aria-label={`${TABS[activeTab].label} subcategories`}
+                      className="flex flex-wrap gap-2"
                     >
-                      {subTab.label}
-                    </button>
-                  ))}
-                </div>
+                      {TABS[activeTab].subTabs?.map((subTab, idx) => (
+                        <button
+                          key={subTab.label}
+                          id={`research-subcategory-tab-${idx}`}
+                          type="button"
+                          role="tab"
+                          aria-selected={activeSubTab === idx}
+                          aria-controls="research-subcategory-panel"
+                          tabIndex={activeSubTab === idx ? 0 : -1}
+                          onClick={() => setActiveSubTab(idx)}
+                          onKeyDown={(event) =>
+                            handleTabKeyDown(
+                              event,
+                              idx,
+                              TABS[activeTab].subTabs?.length ?? 0,
+                              setActiveSubTab,
+                            )
+                          }
+                          className={`min-h-9 rounded-full border px-3 py-1.5 text-[11px] font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
+                            activeSubTab === idx
+                              ? "border-primary bg-primary text-white shadow-sm"
+                              : "border-border bg-white text-foreground hover:border-primary/50 hover:bg-white hover:text-primary"
+                          }`}
+                        >
+                          {subTab.label}
+                        </button>
+                      ))}
+                    </div>
 
-                <div className="mt-3 flex flex-wrap gap-3 pt-2">
-                  {(TABS[activeTab].subTabs?.[activeSubTab]?.items ?? []).map(
-                    (item) => (
+                    <div
+                      id="research-subcategory-panel"
+                      role="tabpanel"
+                      aria-labelledby={`research-subcategory-tab-${activeSubTab}`}
+                      tabIndex={0}
+                      className="mt-3 border-t border-border/60 pt-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-primary"
+                    >
+                      <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                        Available measures
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {(
+                          TABS[activeTab].subTabs?.[activeSubTab]?.items ?? []
+                        ).map((item) => (
+                          <label
+                            key={item.key}
+                            className="flex min-h-9 cursor-pointer items-center gap-2 rounded-full border border-border bg-white px-3 py-1.5 transition-colors hover:border-primary/50"
+                          >
+                            <input
+                              type="checkbox"
+                              className="h-4 w-4 accent-primary"
+                              checked={selectedPollutants.has(item.key)}
+                              onChange={() => togglePollutant(item.key)}
+                            />
+                            <span className="text-[11px] text-foreground/80">
+                              <Chem name={item.name} />
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                ) : TABS[activeTab].items &&
+                  TABS[activeTab].items.length > 0 ? (
+                  <div
+                    role="group"
+                    aria-label={`Options for ${TABS[activeTab].label}`}
+                    className="flex flex-wrap gap-x-5 gap-y-2"
+                  >
+                    {TABS[activeTab].items.map((item) => (
                       <label
-                        key={item.key}
-                        className="flex items-center gap-2 rounded-full border border-border bg-white px-2.5 py-1.5 cursor-pointer hover:border-primary/40 transition-colors"
+                        key={String(item.key ?? item)}
+                        className="flex min-h-9 cursor-pointer items-center gap-2 py-1"
                       >
                         <input
                           type="checkbox"
-                          className="accent-primary w-3.5 h-3.5"
-                          checked={selectedPollutants.has(item.key)}
-                          onChange={() => togglePollutant(item.key)}
+                          className="h-4 w-4 accent-primary"
+                          checked={selectedPollutants.has(
+                            String(item.key ?? item),
+                          )}
+                          onChange={() =>
+                            togglePollutant(String(item.key ?? item))
+                          }
                         />
                         <span className="text-[11px] text-foreground/80">
-                          <Chem name={item.name} />
+                          <Chem name={String(item.name ?? item)} />
                         </span>
                       </label>
-                    ),
-                  )}
-                </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    No filters are available in this category yet.
+                  </p>
+                )}
               </div>
-            ) : TABS[activeTab]?.items && TABS[activeTab].items.length > 0 ? (
-              <div className="flex flex-wrap gap-0 px-4 py-2 bg-[#F0F5FF] border-t border-border/50">
-                {TABS[activeTab].items.map((item, idx) => (
-                  <label
-                    key={String(item.key ?? item)}
-                    className="flex items-center gap-1.5 mr-5 py-0.5 cursor-pointer"
-                  >
-                    <input
-                      type="checkbox"
-                      className="accent-primary w-3 h-3"
-                      checked={selectedPollutants.has(String(item.key ?? item))}
-                      onChange={() => togglePollutant(String(item.key ?? item))}
-                    />
-                    <span className="text-[11px] text-foreground/70">
-                      <Chem name={String(item.name ?? item)} />
-                    </span>
-                  </label>
-                ))}
-              </div>
-            ) : null}
+            )}
           </nav>
 
           {/* Map + right panel */}
