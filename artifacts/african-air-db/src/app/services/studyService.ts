@@ -30,13 +30,14 @@ async function fetchMapData() {
   return response.json();
 }
 interface PublicApiMeasurement {
-  id: string;
+  id?: string;
   item_name: string;
   item_unit: string;
+  category?: string | null;
   mean_value: number | null;
+  sd_value?: number | null;
   min_value: number | null;
   max_value: number | null;
-  measurement_type: string;
 }
 
 interface PublicApiArticle {
@@ -59,9 +60,7 @@ interface PublicApiStudy {
 
   articles: PublicApiArticle[];
 
-  pollutant_measurements: PublicApiMeasurement[];
-  chemical_measurements: PublicApiMeasurement[];
-  pah_measurements: PublicApiMeasurement[];
+  measurements: PublicApiMeasurement[];
 }
 function getStudyYears(study: PublicApiStudy): {
   yearFrom: number | null;
@@ -95,7 +94,7 @@ function createMeasurements(
       raw:
         measurement.mean_value !== null ? String(measurement.mean_value) : "",
       mean: measurement.mean_value,
-      sd: null,
+      sd: measurement.sd_value ?? null,
       min: measurement.min_value,
       max: measurement.max_value,
     };
@@ -108,19 +107,13 @@ function createStudyRecord(
   study: PublicApiStudy,
   studyArea: string,
 ): SamplingRecord {
-  const allMeasurements = [
-    ...study.pollutant_measurements,
-    ...study.chemical_measurements,
-    ...study.pah_measurements,
-  ];
-
   return {
     id: 0,
     studyArea,
     methodology: study.methodology,
     samplingPeriod: study.sampling_period_raw,
     description: study.site_description,
-    measurements: createMeasurements(allMeasurements),
+    measurements: createMeasurements(study.measurements),
   };
 }
 
@@ -183,6 +176,27 @@ function areaCoordinates(
   return (
     AREA_COORDINATES[`${country}|${area}`] ?? COUNTRY_CENTROIDS[country] ?? null
   );
+}
+
+function countryCoordinates(country: string): [number, number] | null {
+  const direct = COUNTRY_CENTROIDS[country];
+  if (direct) return direct;
+
+  // Multi-country API entries have no single country centroid. Use the
+  // geographic center of the listed countries rather than plotting at 0, 0.
+  const names = country
+    .split(/,\s*|\s+and\s+/i)
+    .map((name) => canonicalCountryName(name.trim()))
+    .filter(Boolean);
+  if (names.length < 2) return null;
+
+  const centers = names.map((name) => COUNTRY_CENTROIDS[name]);
+  if (centers.some((center) => !center)) return null;
+
+  return [
+    centers.reduce((sum, center) => sum + center![0], 0) / centers.length,
+    centers.reduce((sum, center) => sum + center![1], 0) / centers.length,
+  ];
 }
 function isParticulateMatter(itemName: string): boolean {
   const name = itemName.trim().toUpperCase();
@@ -321,25 +335,17 @@ export async function getPollutants(): Promise<PollutantInfo[]> {
   for (const country of data.countries) {
     for (const city of country.cities) {
       for (const study of city.studies) {
-        const measurementGroups = [
-          study.pollutant_measurements,
-          study.chemical_measurements,
-          study.pah_measurements,
-        ];
+        for (const measurement of study.measurements) {
+          const category = getCategory(measurement.item_name);
 
-        for (const measurements of measurementGroups) {
-          for (const measurement of measurements) {
-            const category = getCategory(measurement.item_name);
-
-            // Keep the API item_name as the key.
-            if (!pollutants.has(measurement.item_name)) {
-              pollutants.set(measurement.item_name, {
-                key: measurement.item_name,
-                name: measurement.item_name,
-                category,
-                unit: measurement.item_unit,
-              });
-            }
+          // Keep the API item_name as the key.
+          if (!pollutants.has(measurement.item_name)) {
+            pollutants.set(measurement.item_name, {
+              key: measurement.item_name,
+              name: measurement.item_name,
+              category,
+              unit: measurement.item_unit,
+            });
           }
         }
       }
@@ -407,11 +413,7 @@ export async function getDatasetStats(): Promise<DatasetStats> {
         }
 
         // Count all unique measurement variables.
-        for (const measurement of [
-          ...study.pollutant_measurements,
-          ...study.chemical_measurements,
-          ...study.pah_measurements,
-        ]) {
+        for (const measurement of study.measurements) {
           pollutantNames.add(measurement.item_name);
         }
       }
@@ -649,14 +651,17 @@ export async function getCountrySummaries(
   const data = await getPublicMapData();
 
   const summaries: CountrySummary[] = data.countries.map((country) => {
+    const countryName = canonicalCountryName(country.country);
     const areas: AreaSummary[] = country.cities.map((city) => {
+      const areaName = canonicalAreaName(city.study_area);
       const coordinates =
-        areaCoordinates(country.country, canonicalAreaName(city.study_area)) ??
-        areaCoordinates(country.country, city.study_area);
+        areaCoordinates(countryName, areaName) ??
+        areaCoordinates(countryName, city.study_area) ??
+        countryCoordinates(countryName);
 
       return {
-        name: canonicalAreaName(city.study_area),
-        country: country.country,
+        name: areaName,
+        country: countryName,
         coordinates: coordinates ?? [0, 0],
         studyCount: city.study_count,
         settings: [],
@@ -681,7 +686,7 @@ export async function getCountrySummaries(
         return {
           id: study.id,
           region: "",
-          country: country.country,
+          country: countryName,
           source: study.source,
           author: study.articles[0]?.author ?? "",
           journal: study.articles[0]?.journal ?? "",
@@ -700,8 +705,8 @@ export async function getCountrySummaries(
       .filter((year): year is number => year !== null);
 
     return {
-      topoId: COUNTRY_TOPO_ID[country.country] ?? null,
-      name: country.country,
+      topoId: COUNTRY_TOPO_ID[countryName] ?? null,
+      name: countryName,
       region: "",
       studyCount: country.study_count,
       recordCount: country.study_count,
