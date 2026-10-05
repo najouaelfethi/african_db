@@ -170,7 +170,7 @@ export default function HomePage({
             />
             <StatCard
               icon={Calendar}
-              label="Year Coverage"
+              label="Sampling Period"
               staticValue={yearRange}
             />
           </div>

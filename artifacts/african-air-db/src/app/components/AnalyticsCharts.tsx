@@ -37,7 +37,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   wsia: "Water soluble inorganic aerosols",
 };
 
-const axisTick = { fontSize: 10, fill: "#8795A8" };
+const axisTick = { fontSize: 12, fontWeight: 500, fill: "#334155" };
 const tooltipStyle = {
   fontSize: 12,
   borderRadius: 8,
@@ -121,7 +121,7 @@ function AnnualStudiesCard({ onRetry }: { onRetry: () => void }) {
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart
               data={annualData}
-              margin={{ top: 8, right: 8, left: -20, bottom: 0 }}
+              margin={{ top: 8, right: 8, left: 0, bottom: 4 }}
             >
               <defs>
                 <linearGradient
@@ -140,15 +140,15 @@ function AnnualStudiesCard({ onRetry }: { onRetry: () => void }) {
                 dataKey="year"
                 tick={axisTick}
                 tickLine={false}
-                axisLine={{ stroke: "#E2E8F0" }}
-                minTickGap={18}
+                axisLine={{ stroke: "#94A3B8", strokeWidth: 1 }}
+                minTickGap={24}
               />
               <YAxis
                 tick={axisTick}
                 tickLine={false}
                 axisLine={false}
                 allowDecimals={false}
-                width={38}
+                width={42}
               />
               <Tooltip
                 contentStyle={tooltipStyle}
