@@ -1489,43 +1489,45 @@ export default function App() {
                 role="tabpanel"
                 aria-labelledby={`research-category-tab-${activeTab}`}
                 tabIndex={0}
-                className="border-t border-border/60 bg-[#F5F8FF] px-3 py-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-primary sm:px-4"
+                className="border-t border-border/60 bg-[#F5F8FF] px-3 py-1.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-primary sm:px-4"
               >
                 {TABS[activeTab].source === "static" &&
                 (TABS[activeTab].subTabs?.length ?? 0) > 0 ? (
                   <>
-                    <div
-                      role="tablist"
-                      aria-label={`${TABS[activeTab].label} subcategories`}
-                      className="flex flex-wrap items-center gap-1.5"
-                    >
-                      {TABS[activeTab].subTabs?.map((subTab, idx) => (
-                        <button
-                          key={subTab.label}
-                          id={`research-subcategory-tab-${idx}`}
-                          type="button"
-                          role="tab"
-                          aria-selected={activeSubTab === idx}
-                          aria-controls="research-subcategory-panel"
-                          tabIndex={activeSubTab === idx ? 0 : -1}
-                          onClick={() => setActiveSubTab(idx)}
-                          onKeyDown={(event) =>
-                            handleTabKeyDown(
-                              event,
-                              idx,
-                              TABS[activeTab].subTabs?.length ?? 0,
-                              setActiveSubTab,
-                            )
-                          }
-                          className={`min-h-8 rounded-md border px-2.5 py-1 text-[11px] font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
-                            activeSubTab === idx
-                              ? "border-primary/20 bg-white text-primary shadow-sm"
-                              : "border-transparent text-muted-foreground hover:bg-white/75 hover:text-foreground"
-                          }`}
-                        >
-                          {subTab.label}
-                        </button>
-                      ))}
+                    <div className="-mx-3 overflow-x-auto overscroll-x-contain px-3 pb-0.5 sm:-mx-4 sm:px-4">
+                      <div
+                        role="tablist"
+                        aria-label={`${TABS[activeTab].label} subcategories`}
+                        className="flex w-max min-w-full flex-nowrap items-center gap-1.5"
+                      >
+                        {TABS[activeTab].subTabs?.map((subTab, idx) => (
+                          <button
+                            key={subTab.label}
+                            id={`research-subcategory-tab-${idx}`}
+                            type="button"
+                            role="tab"
+                            aria-selected={activeSubTab === idx}
+                            aria-controls="research-subcategory-panel"
+                            tabIndex={activeSubTab === idx ? 0 : -1}
+                            onClick={() => setActiveSubTab(idx)}
+                            onKeyDown={(event) =>
+                              handleTabKeyDown(
+                                event,
+                                idx,
+                                TABS[activeTab].subTabs?.length ?? 0,
+                                setActiveSubTab,
+                              )
+                            }
+                            className={`min-h-7 shrink-0 whitespace-nowrap rounded-md border px-2.5 py-0.5 text-[11px] font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
+                              activeSubTab === idx
+                                ? "border-primary/20 bg-white text-primary shadow-sm"
+                                : "border-transparent text-muted-foreground hover:bg-white/75 hover:text-foreground"
+                            }`}
+                          >
+                            {subTab.label}
+                          </button>
+                        ))}
+                      </div>
                     </div>
 
                     <div
@@ -1533,9 +1535,9 @@ export default function App() {
                       role="tabpanel"
                       aria-labelledby={`research-subcategory-tab-${activeSubTab}`}
                       tabIndex={0}
-                      className="mt-2 border-t border-border/60 pt-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-primary"
+                      className="mt-1.5 border-t border-border/60 pt-1.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-primary"
                     >
-                      <div className="mb-1.5 flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+                      <div className="mb-1 flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
                         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                           <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
                             Available measures
@@ -1557,7 +1559,7 @@ export default function App() {
                               activeMeasureItems.length === 0 ||
                               allActiveMeasuresSelected
                             }
-                            className="rounded px-2 py-1 text-[11px] font-medium text-primary transition-colors hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary disabled:cursor-not-allowed disabled:text-muted-foreground/50 disabled:hover:bg-transparent"
+                            className="rounded px-2 py-0.5 text-[11px] font-medium text-primary transition-colors hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary disabled:cursor-not-allowed disabled:text-muted-foreground/50 disabled:hover:bg-transparent"
                           >
                             Select all
                           </button>
@@ -1571,17 +1573,17 @@ export default function App() {
                             type="button"
                             onClick={() => setActiveMeasureSelection(false)}
                             disabled={selectedActiveMeasureCount === 0}
-                            className="rounded px-2 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-white hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary disabled:cursor-not-allowed disabled:text-muted-foreground/50 disabled:hover:bg-transparent"
+                            className="rounded px-2 py-0.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-white hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary disabled:cursor-not-allowed disabled:text-muted-foreground/50 disabled:hover:bg-transparent"
                           >
                             Clear
                           </button>
                         </div>
                       </div>
-                      <div className="flex flex-wrap gap-x-1 gap-y-0.5">
+                      <div className="flex flex-wrap gap-x-1 gap-y-0">
                         {activeMeasureItems.map((item) => (
                           <label
                             key={item.key}
-                            className="flex min-h-8 cursor-pointer items-center gap-1.5 rounded-md border border-transparent px-2 py-1 transition-colors hover:bg-white/80"
+                            className="flex min-h-7 cursor-pointer items-center gap-1.5 rounded-md border border-transparent px-1.5 py-0.5 transition-colors hover:bg-white/80"
                           >
                             <input
                               type="checkbox"
