@@ -1435,7 +1435,7 @@ export default function App() {
                       <div
                         role="tablist"
                         aria-label={`${TABS[activeTab].label} subcategories`}
-                        className="flex w-full flex-nowrap items-center gap-0.5"
+                        className="flex w-full flex-nowrap items-center gap-1"
                       >
                         {TABS[activeTab].subTabs?.map((subTab, idx) => (
                           <button
@@ -1457,8 +1457,8 @@ export default function App() {
                             }
                             className={`min-h-8 shrink-0 whitespace-nowrap rounded-md border px-0.5 py-1 text-[clamp(9px,1.2cqw,14px)] font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
                               activeSubTab === idx
-                                ? "border-primary/20 bg-white text-primary shadow-sm"
-                                : "border-transparent text-slate-700 hover:bg-white/75 hover:text-foreground"
+                                ? "border-primary bg-primary text-white shadow-sm"
+                                : "border-slate-300/70 bg-white/55 text-slate-700 hover:border-primary/25 hover:bg-white hover:text-foreground"
                             }`}
                           >
                             {subTab.label}
