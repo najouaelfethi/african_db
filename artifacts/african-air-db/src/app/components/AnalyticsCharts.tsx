@@ -57,10 +57,10 @@ export default function AnalyticsCharts() {
       <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-            Evidence at a glance
+            Research Insights
           </p>
           <p className="mt-1 text-sm text-muted-foreground">
-            Publication history and the range of pollutants documented.
+            Publication trends and pollutant coverage across the database.
           </p>
         </div>
       </div>
