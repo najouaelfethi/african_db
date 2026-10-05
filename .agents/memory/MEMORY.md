@@ -1,2 +1,3 @@
 - [Research publication years](research-publication-years.md) — use the source citation for each year and the statistics endpoint for filter bounds.
 - [Pollutant subcategory tabs](pollutant-subcategory-tabs.md) — Keep full labels readable in one line, without wrapping or horizontal scrolling.
+- [Post-merge database safety](post-merge-database-safety.md) — Do not automatically push an empty scaffold schema against the app database.

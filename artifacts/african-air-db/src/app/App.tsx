@@ -1431,7 +1431,7 @@ export default function App() {
                 {TABS[activeTab].source === "static" &&
                 (TABS[activeTab].subTabs?.length ?? 0) > 0 ? (
                   <>
-                    <div className="min-w-0">
+                    <div className="min-w-0 [container-type:inline-size]">
                       <div
                         role="tablist"
                         aria-label={`${TABS[activeTab].label} subcategories`}
@@ -1455,10 +1455,10 @@ export default function App() {
                                 setActiveSubTab,
                               )
                             }
-                            className={`min-h-7 shrink-0 whitespace-nowrap rounded-md border px-1 py-0.5 text-[clamp(9px,0.84vw,12px)] font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
+                            className={`min-h-8 shrink-0 whitespace-nowrap rounded-md border px-0.5 py-1 text-[clamp(9px,1.2cqw,14px)] font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
                               activeSubTab === idx
                                 ? "border-primary/20 bg-white text-primary shadow-sm"
-                                : "border-transparent text-muted-foreground hover:bg-white/75 hover:text-foreground"
+                                : "border-transparent text-slate-700 hover:bg-white/75 hover:text-foreground"
                             }`}
                           >
                             {subTab.label}
@@ -1800,33 +1800,6 @@ export default function App() {
                       )}
                     </div>
                   ))}
-                </div>
-
-                <div className="px-4 py-2 border-b border-border">
-                  <div className="flex items-center justify-between">
-                    <span className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
-                      Filters
-                      {isFiltering && (
-                        <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-                      )}
-                    </span>
-                    <button
-                      onClick={() => {
-                        setSearchQuery("");
-                        setSelectedPollutants(
-                          new Set(TABS[activeTab]?.keys ?? []),
-                        );
-                        setHasUserChangedPollutants(false);
-                      }}
-                      className={`text-[10px] font-medium transition-all duration-300 ${
-                        isFiltering
-                          ? "text-primary hover:underline clear-pulse"
-                          : "text-muted-foreground hover:text-foreground"
-                      }`}
-                    >
-                      {isFiltering ? "Clear Filters" : "Clear"}
-                    </button>
-                  </div>
                 </div>
 
                 {isFiltering && (
