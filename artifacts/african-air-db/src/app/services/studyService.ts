@@ -489,8 +489,17 @@ export async function getSettings(): Promise<string[]> {
 
 function studyPollutantKeys(study: Study): Set<string> {
   const keys = new Set<string>();
-  for (const r of study.records)
-    for (const k of Object.keys(r.measurements)) keys.add(k);
+  for (const record of study.records) {
+    for (const [key, measurement] of Object.entries(record.measurements)) {
+      const hasReportedValue = [
+        measurement.mean,
+        measurement.min,
+        measurement.max,
+      ].some((value) => typeof value === "number" && Number.isFinite(value));
+
+      if (hasReportedValue) keys.add(key);
+    }
+  }
   return keys;
 }
 
