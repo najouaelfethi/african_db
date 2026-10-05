@@ -223,7 +223,17 @@ export async function getPollutants(): Promise<PollutantInfo[]> {
 
   const pollutants = new Map<string, PollutantInfo>();
 
-  // Categories follow the structure of the original dataset.
+  const categoryLabels: Record<string, string> = {
+    bulk_pm: "Bulk PM",
+    carbonaceous: "Carbonaceous aerosols",
+    wsia: "Water soluble inorganic aerosols",
+    trace_metals: "Trace metals",
+    organic: "Organic pollutants",
+    gas: "Atmospheric Gases",
+  };
+
+  // Use the API's category as the source of truth, with name-based fallback
+  // for older or incomplete API records.
   const getCategory = (itemName: string): string => {
     // Bulk particulate matter
     if (["PM10", "PM2.5", "PM1", "Total Suspended Particles (TSP)"].includes(itemName)) {
@@ -336,13 +346,19 @@ export async function getPollutants(): Promise<PollutantInfo[]> {
     for (const city of country.cities) {
       for (const study of city.studies) {
         for (const measurement of study.measurements) {
-          const category = getCategory(measurement.item_name);
+          const category =
+            (measurement.category && categoryLabels[measurement.category]) ||
+            getCategory(measurement.item_name);
+          const name =
+            measurement.item_name === "TSP"
+              ? "Total Suspended Particles (TSP)"
+              : measurement.item_name;
 
           // Keep the API item_name as the key.
           if (!pollutants.has(measurement.item_name)) {
             pollutants.set(measurement.item_name, {
               key: measurement.item_name,
-              name: measurement.item_name,
+              name,
               category,
               unit: measurement.item_unit,
             });
