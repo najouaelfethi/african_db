@@ -3,7 +3,7 @@ import {
   Search, X, ChevronDown, ChevronUp, ChevronRight, SlidersHorizontal,
   RotateCcw, Download, BookOpen, CalendarRange, Users,
   MapPin, FlaskConical, Microscope, ArrowUpDown,
-  Filter, CheckSquare, Square,
+  Filter,
 } from "lucide-react";
 import { useAsync } from "./hooks/useData";
 import { Chem, chemToHtml, unitToHtml } from "./utils/chemFormat";
@@ -73,76 +73,6 @@ function RangeInput({
           onChange={e => onChangeMax(Number(e.target.value))}
           className="flex-1 h-1 accent-primary cursor-pointer" />
       </div>
-    </div>
-  );
-}
-
-function CheckGroup({
-  title, icon: Icon, items, selected, onToggle, collapsed, onCollapse, searchable = false,
-}: {
-  title: string; icon: React.ElementType; items: string[]; selected: Set<string>;
-  onToggle: (v: string) => void; collapsed: boolean; onCollapse: () => void; searchable?: boolean;
-}) {
-  const [q, setQ] = useState("");
-  const visible = searchable && q ? items.filter(i => i.toLowerCase().includes(q.toLowerCase())) : items;
-  const allChecked = items.every(i => selected.has(i));
-
-  const toggleAll = () => {
-    if (allChecked) items.forEach(i => selected.has(i) && onToggle(i));
-    else items.filter(i => !selected.has(i)).forEach(i => onToggle(i));
-  };
-
-  return (
-    <div className="border-b border-border/60">
-      <button
-        onClick={onCollapse}
-        className="flex items-center justify-between w-full px-4 py-3 hover:bg-muted/30 transition-colors"
-      >
-        <div className="flex items-center gap-2">
-          <Icon size={13} className="text-muted-foreground" />
-          <span className="text-xs font-semibold text-foreground">{title}</span>
-          {selected.size > 0 && (
-            <span className="bg-primary text-primary-foreground rounded-full text-[9px] w-4 h-4 flex items-center justify-center font-bold">
-              {selected.size}
-            </span>
-          )}
-        </div>
-        {collapsed ? <ChevronDown size={13} className="text-muted-foreground" /> : <ChevronUp size={13} className="text-muted-foreground" />}
-      </button>
-
-      {!collapsed && (
-        <div className="px-4 pb-3 space-y-1">
-          {searchable && (
-            <div className="relative mb-2">
-              <Search size={11} className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
-              <input
-                value={q} onChange={e => setQ(e.target.value)}
-                placeholder={`Search ${title.toLowerCase()}…`}
-                className="w-full text-[11px] border border-border rounded pl-6 pr-2 py-1.5 bg-background focus:outline-none focus:ring-1 focus:ring-primary/30 placeholder:text-muted-foreground/50"
-              />
-            </div>
-          )}
-          {items.length > 3 && (
-            <button onClick={toggleAll} className="flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-foreground mb-1">
-              {allChecked ? <CheckSquare size={11} className="text-primary" /> : <Square size={11} />}
-              {allChecked ? "Deselect all" : "Select all"}
-            </button>
-          )}
-          <div className={`space-y-0.5 ${items.length > 8 ? "max-h-40 overflow-y-auto pr-1" : ""}`}>
-            {visible.map(item => (
-              <label key={item} className="flex items-center gap-2 py-1 cursor-pointer group">
-                <input
-                  type="checkbox"
-                  checked={selected.has(item)}
-                  onChange={() => onToggle(item)}
-                  className="accent-primary w-3 h-3 shrink-0"
-                />
-                <span className="text-[11px] text-foreground/75 group-hover:text-foreground transition-colors leading-tight"><Chem name={item} /></span>
-              </label>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 }

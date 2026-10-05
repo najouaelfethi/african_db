@@ -84,6 +84,12 @@ function getStudyYears(study: PublicApiStudy): {
     yearTo: study.end_year,
   };
 }
+
+function getPublicationYear(source: string): number | null {
+  const match = source.match(/\b(?:19|20)\d{2}\b/);
+  return match ? Number(match[0]) : null;
+}
+
 function createMeasurements(
   measurements: PublicApiMeasurement[],
 ): Record<string, Measurement> {
@@ -133,8 +139,36 @@ interface PublicApiResponse {
   countries: PublicApiCountry[];
 }
 
+interface PublicApiStatistics {
+  year_range?: {
+    min?: unknown;
+    max?: unknown;
+  };
+}
+
 async function getPublicMapData(): Promise<PublicApiResponse> {
   return fetchMapData();
+}
+
+export async function getPublicationYearRange(): Promise<{ min: number; max: number }> {
+  const response = await fetch(`${PUBLIC_API_BASE}/statistics`);
+  if (!response.ok) {
+    throw new Error(`Statistics API error: ${response.status}`);
+  }
+
+  const statistics = (await response.json()) as PublicApiStatistics;
+  const { min, max } = statistics.year_range ?? {};
+  if (
+    typeof min !== "number" ||
+    !Number.isInteger(min) ||
+    typeof max !== "number" ||
+    !Number.isInteger(max) ||
+    min > max
+  ) {
+    throw new Error("Statistics API returned an invalid year_range");
+  }
+
+  return { min, max };
 }
 
 /*Test API temporary*/
@@ -564,6 +598,26 @@ function matchesFilters(study: Study, filters: StudyFilters): boolean {
     if (study.yearFrom > filters.yearTo) return false;
   }
 
+  if (
+    filters.publicationYearFrom !== undefined ||
+    filters.publicationYearTo !== undefined
+  ) {
+    const publicationYear = study.publicationYear;
+    if (publicationYear === null || publicationYear === undefined) return false;
+    if (
+      filters.publicationYearFrom !== undefined &&
+      publicationYear < filters.publicationYearFrom
+    ) {
+      return false;
+    }
+    if (
+      filters.publicationYearTo !== undefined &&
+      publicationYear > filters.publicationYearTo
+    ) {
+      return false;
+    }
+  }
+
   return true;
 }
 
@@ -571,10 +625,14 @@ function sortStudies(items: Study[], sort: StudyQuery["sort"]): Study[] {
   const sorted = [...items];
   switch (sort) {
     case "yearDesc":
-      sorted.sort((a, b) => (b.yearTo ?? -1) - (a.yearTo ?? -1));
+      sorted.sort(
+        (a, b) => (b.publicationYear ?? -1) - (a.publicationYear ?? -1),
+      );
       break;
     case "yearAsc":
-      sorted.sort((a, b) => (a.yearFrom ?? 9999) - (b.yearFrom ?? 9999));
+      sorted.sort(
+        (a, b) => (a.publicationYear ?? 9999) - (b.publicationYear ?? 9999),
+      );
       break;
     case "titleAsc":
       sorted.sort((a, b) => a.title.localeCompare(b.title));
@@ -615,6 +673,7 @@ export async function queryStudies(
           identifier: apiStudy.articles[0]?.identifier ?? "",
           title: apiStudy.title,
           dataProcessing: "",
+          publicationYear: getPublicationYear(apiStudy.source),
           yearFrom,
           yearTo,
           records: [createStudyRecord(apiStudy, city.study_area)],
