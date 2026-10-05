@@ -121,7 +121,7 @@ function AnnualStudiesCard({ onRetry }: { onRetry: () => void }) {
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart
               data={annualData}
-              margin={{ top: 8, right: 8, left: 0, bottom: 4 }}
+              margin={{ top: 8, right: 24, left: 0, bottom: 4 }}
             >
               <defs>
                 <linearGradient
@@ -141,6 +141,7 @@ function AnnualStudiesCard({ onRetry }: { onRetry: () => void }) {
                 tick={axisTick}
                 tickLine={false}
                 axisLine={{ stroke: "#94A3B8", strokeWidth: 1 }}
+                interval="preserveStartEnd"
                 minTickGap={24}
               />
               <YAxis
@@ -281,10 +282,6 @@ function PollutantDistributionCard({ onRetry }: { onRetry: () => void }) {
               </div>
             ))}
           </div>
-          <p className="mt-3 border-t border-border pt-3 text-[11px] leading-relaxed text-muted-foreground">
-            Counts are unique pollutant variables per category; studies may
-            report multiple pollutants.
-          </p>
         </>
       )}
     </article>
