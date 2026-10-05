@@ -27,6 +27,9 @@
   "private": true,
   "dependencies": {},
   "devDependencies": {
+    "@testing-library/react": "^16.3.3",
+    "jsdom": "^29.1.1",
+    "vitest": "^4.1.11",
     "prettier": "^3.9.6",
     "typescript": "~5.9.3"
   }

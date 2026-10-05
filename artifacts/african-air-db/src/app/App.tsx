@@ -44,6 +44,10 @@ import StudyDetailPage from "./StudyDetailPage";
 import HomePage from "./HomePage";
 import { Chem, unitToHtml } from "./utils/chemFormat";
 import AdminDashboard from "./AdminDashboard";
+import MeasureFilterControls, {
+  getSelectedPollutantKeysForMap,
+  updateSelectedMeasures,
+} from "./components/MeasureFilterControls";
 /*temporary adding this import*/
 import { testMapApi } from "./services/studyService";
 
@@ -689,52 +693,31 @@ export default function App() {
 
   const togglePollutant = (key: string) => {
     setHasUserChangedPollutants(true);
-    setSelectedPollutants((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
+    setSelectedPollutants((prev) =>
+      updateSelectedMeasures(prev, [{ key }], !prev.has(key)),
+    );
   };
 
   const activeMeasureItems =
     TABS[activeTab]?.source === "static"
       ? (TABS[activeTab].subTabs?.[activeSubTab]?.items ?? [])
       : [];
-  const selectedActiveMeasureCount = activeMeasureItems.reduce(
-    (count, item) => count + Number(selectedPollutants.has(item.key)),
-    0,
-  );
-  const allActiveMeasuresSelected =
-    activeMeasureItems.length > 0 &&
-    selectedActiveMeasureCount === activeMeasureItems.length;
-
-  const setActiveMeasureSelection = (selectAll: boolean) => {
-    if (activeMeasureItems.length === 0) return;
-
-    setHasUserChangedPollutants(true);
-    setSelectedPollutants((prev) => {
-      const next = new Set(prev);
-      activeMeasureItems.forEach(({ key }) => {
-        if (selectAll) next.add(key);
-        else next.delete(key);
-      });
-      return next;
-    });
-  };
 
   const activeFilters = useMemo<StudyFilters>(() => {
     const f: StudyFilters = {};
     if (searchQuery) f.query = searchQuery;
     const activeTabConfig = TABS[activeTab];
 
-    if (
-      activeTabConfig &&
-      hasUserChangedPollutants &&
-      selectedPollutants.size < activeTabConfig.keys.length
-    ) {
+    const selectedPollutantKeys = activeTabConfig
+      ? getSelectedPollutantKeysForMap(
+          selectedPollutants,
+          activeTabConfig.keys,
+          hasUserChangedPollutants,
+        )
+      : undefined;
+    if (selectedPollutantKeys) {
       // Send the selected API pollutant keys to the study filter.
-      f.pollutants = Array.from(selectedPollutants);
+      f.pollutants = selectedPollutantKeys;
     }
     return f;
   }, [
@@ -1491,66 +1474,12 @@ export default function App() {
                       tabIndex={0}
                       className="mt-1.5 border-t border-border/60 pt-1.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-primary"
                     >
-                      <div className="mb-1 flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
-                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                          <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                            Available measures
-                          </span>
-                          <span
-                            role="status"
-                            aria-live="polite"
-                            className="rounded-full bg-white/90 px-2 py-0.5 text-[11px] font-medium text-foreground/70"
-                          >
-                            {selectedActiveMeasureCount} of{" "}
-                            {activeMeasureItems.length} selected
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <button
-                            type="button"
-                            onClick={() => setActiveMeasureSelection(true)}
-                            disabled={
-                              activeMeasureItems.length === 0 ||
-                              allActiveMeasuresSelected
-                            }
-                            className="rounded px-2 py-0.5 text-[11px] font-medium text-primary transition-colors hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary disabled:cursor-not-allowed disabled:text-muted-foreground/50 disabled:hover:bg-transparent"
-                          >
-                            Select all
-                          </button>
-                          <span
-                            aria-hidden="true"
-                            className="text-[10px] text-border"
-                          >
-                            /
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => setActiveMeasureSelection(false)}
-                            disabled={selectedActiveMeasureCount === 0}
-                            className="rounded px-2 py-0.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-white hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary disabled:cursor-not-allowed disabled:text-muted-foreground/50 disabled:hover:bg-transparent"
-                          >
-                            Clear
-                          </button>
-                        </div>
-                      </div>
-                      <div className="flex flex-wrap gap-x-1 gap-y-0">
-                        {activeMeasureItems.map((item) => (
-                          <label
-                            key={item.key}
-                            className="flex min-h-7 cursor-pointer items-center gap-1.5 rounded-md border border-transparent px-1.5 py-0.5 transition-colors hover:bg-white/80"
-                          >
-                            <input
-                              type="checkbox"
-                              className="h-3.5 w-3.5 accent-primary"
-                              checked={selectedPollutants.has(item.key)}
-                              onChange={() => togglePollutant(item.key)}
-                            />
-                            <span className="text-[11px] text-foreground/80">
-                              <Chem name={item.name} />
-                            </span>
-                          </label>
-                        ))}
-                      </div>
+                      <MeasureFilterControls
+                        items={activeMeasureItems}
+                        selectedPollutants={selectedPollutants}
+                        setSelectedPollutants={setSelectedPollutants}
+                        onUserChange={() => setHasUserChangedPollutants(true)}
+                      />
                     </div>
                   </>
                 ) : TABS[activeTab].items &&
