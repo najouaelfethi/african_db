@@ -1,1 +1,2 @@
 attached_assets/DS_Website-frontend-v2_1785839425394.zip filter=lfs diff=lfs merge=lfs -text
+zipFile.zip filter=lfs diff=lfs merge=lfs -text
