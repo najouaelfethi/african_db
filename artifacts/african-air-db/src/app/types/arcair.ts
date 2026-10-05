@@ -62,6 +62,8 @@ export interface Study {
   title: string;
   /** "Data processing" column, e.g. "Observations; Local Air Quality Management". */
   dataProcessing: string;
+  /** Publication year extracted from the API's source citation. */
+  publicationYear?: number | null;
   /** Earliest sampling year parsed from the records' sampling periods. */
   yearFrom: number | null;
   /** Latest sampling year parsed from the records' sampling periods. */
@@ -124,8 +126,12 @@ export interface StudyFilters {
   categories?: string[];
   /** Site setting substrings, e.g. "Urban", "Industrial", "Rural". */
   settings?: string[];
+  /** Sampling-period bounds, used by existing map filters. */
   yearFrom?: number;
   yearTo?: number;
+  /** Publication-year bounds, extracted from each study's source citation. */
+  publicationYearFrom?: number;
+  publicationYearTo?: number;
 }
 
 export type StudySortKey =

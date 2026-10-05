@@ -7,27 +7,33 @@ import {
 } from "lucide-react";
 import { useAsync } from "./hooks/useData";
 import { Chem, chemToHtml, unitToHtml } from "./utils/chemFormat";
-import { queryStudies, getPollutantsByCategory, getCountrySummaries } from "./services/studyService";
+import { queryStudies, getPollutantsByCategory, getCountrySummaries, getPublicationYearRange } from "./services/studyService";
 import type { Study, StudyFilters, StudyQuery, PagedResult } from "./types/arcair";
 
 // ── TYPES ─────────────────────────────────────────────────────────────────────
+
+interface YearRange {
+  min: number;
+  max: number;
+}
+
+const DEFAULT_PUBLICATION_YEAR_RANGE: YearRange = { min: 1991, max: 2025 };
 
 interface Filters {
   query: string;
   countries: Set<string>;
   pollutants: Set<string>;
-  yearFrom: number;
-  yearTo: number;
+  publicationYearFrom: number;
+  publicationYearTo: number;
 }
 
-function emptyFilters(): Filters {
+function emptyFilters(yearRange: YearRange = DEFAULT_PUBLICATION_YEAR_RANGE): Filters {
   return {
     query: "",
     countries: new Set(),
     pollutants: new Set(),
-    // Dataset sampling-year bounds (see getDatasetStats)
-    yearFrom: 1996,
-    yearTo: 2023,
+    publicationYearFrom: yearRange.min,
+    publicationYearTo: yearRange.max,
   };
 }
 
@@ -233,7 +239,7 @@ function ResultCard({ study, index, pollutantDict, onOpen }: { study: Study; ind
             {displayTitle}
           </h3>
           <p className="text-[11px] text-muted-foreground mb-2">
-            {authorDisplay} · <span className="text-primary font-medium">{study.yearFrom}{study.yearTo && study.yearTo !== study.yearFrom ? `-${study.yearTo}` : ""}</span>
+            {authorDisplay} · <span className="text-primary font-medium">Published {study.publicationYear ?? "year unavailable"}</span>
           </p>
 
           <div className="flex flex-wrap gap-1.5 mb-2">
@@ -277,16 +283,31 @@ export default function SearchPage({ onOpenStudy }: { onOpenStudy?: (id: string)
 
   const { data: categoriesData } = useAsync(getPollutantsByCategory);
   const { data: countriesData } = useAsync(getCountrySummaries);
+  const {
+    data: publicationYearRange,
+    error: publicationYearRangeError,
+  } = useAsync(getPublicationYearRange);
+
+  useEffect(() => {
+    if (!publicationYearRange) return;
+    setFilters(prev => ({
+      ...prev,
+      publicationYearFrom: publicationYearRange.min,
+      publicationYearTo: publicationYearRange.max,
+    }));
+  }, [publicationYearRange]);
 
   const activeQueryFilters = useMemo<StudyFilters>(() => {
     const f: StudyFilters = {};
     if (filters.query) f.query = filters.query;
     if (filters.countries.size > 0) f.countries = Array.from(filters.countries);
     if (filters.pollutants.size > 0) f.pollutants = Array.from(filters.pollutants);
-    if (filters.yearFrom > 1996) f.yearFrom = filters.yearFrom;
-    if (filters.yearTo < 2023) f.yearTo = filters.yearTo;
+    if (publicationYearRange) {
+      f.publicationYearFrom = filters.publicationYearFrom;
+      f.publicationYearTo = filters.publicationYearTo;
+    }
     return f;
-  }, [filters]);
+  }, [filters, publicationYearRange]);
 
   // Reset to page 1 whenever filters or sorting change
   useEffect(() => {
@@ -317,7 +338,8 @@ export default function SearchPage({ onOpenStudy }: { onOpenStudy?: (id: string)
     });
   };
 
-  const resetAll = () => setFilters(emptyFilters());
+  const resetAll = () =>
+    setFilters(emptyFilters(publicationYearRange ?? DEFAULT_PUBLICATION_YEAR_RANGE));
 
   const results = pageResult?.items || [];
   const totalItems = pageResult?.total || 0;
@@ -367,21 +389,35 @@ export default function SearchPage({ onOpenStudy }: { onOpenStudy?: (id: string)
             <button onClick={() => toggleCollapse("range")} className="flex items-center justify-between w-full px-4 py-3 hover:bg-muted/30">
               <div className="flex items-center gap-2">
                 <CalendarRange size={13} className="text-muted-foreground" />
-                <span className="text-xs font-semibold text-foreground">Sampling Years</span>
+                <span className="text-xs font-semibold text-foreground">Publication Year</span>
               </div>
               {collapsed.range ? <ChevronDown size={13} className="text-muted-foreground" /> : <ChevronUp size={13} className="text-muted-foreground" />}
             </button>
             {!collapsed.range && (
-              <div className="px-4 pb-4 space-y-4">
-                <RangeInput
-                  label="Publication Year"
-                  min={1996} max={2023}
-                  valueMin={filters.yearFrom} valueMax={filters.yearTo}
-                  onChangeMin={v => setFilters(p => ({ ...p, yearFrom: Math.min(v, p.yearTo) }))}
-                  onChangeMax={v => setFilters(p => ({ ...p, yearTo: Math.max(v, p.yearFrom) }))}
-                />
-                <div className="space-y-2">
-                </div>
+              <div className="px-4 pb-4">
+                {publicationYearRange ? (
+                  <RangeInput
+                    label="Publication Year"
+                    min={publicationYearRange.min}
+                    max={publicationYearRange.max}
+                    valueMin={filters.publicationYearFrom}
+                    valueMax={filters.publicationYearTo}
+                    onChangeMin={v => setFilters(p => ({
+                      ...p,
+                      publicationYearFrom: Math.min(v, p.publicationYearTo),
+                    }))}
+                    onChangeMax={v => setFilters(p => ({
+                      ...p,
+                      publicationYearTo: Math.max(v, p.publicationYearFrom),
+                    }))}
+                  />
+                ) : (
+                  <p className="text-[11px] text-muted-foreground" role="status">
+                    {publicationYearRangeError
+                      ? "Publication year range is unavailable."
+                      : "Loading publication year range…"}
+                  </p>
+                )}
               </div>
             )}
           </div>
