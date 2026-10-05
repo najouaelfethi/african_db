@@ -585,7 +585,7 @@ export default function App() {
         label: "Organic Pollutants",
       },
       {
-        datasetCategory: "Atmospheric gases",
+        datasetCategory: "Atmospheric Gases",
         label: "Atmospheric Gases (ppb) (*ppm)",
       },
     ]

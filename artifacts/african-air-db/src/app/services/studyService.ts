@@ -232,17 +232,24 @@ export async function getPollutants(): Promise<PollutantInfo[]> {
     gas: "Atmospheric Gases",
   };
 
+  const pollutantDisplayNames: Record<string, string> = {
+    TSP: "Total Suspended Particles (TSP)",
+    BC: "Black carbon (BC)",
+    OC: "Organic carbon (OC)",
+    CH4: "*CH4",
+  };
+
   // Use the API's category as the source of truth, with name-based fallback
   // for older or incomplete API records.
   const getCategory = (itemName: string): string => {
     // Bulk particulate matter
-    if (["PM10", "PM2.5", "PM1", "Total Suspended Particles (TSP)"].includes(itemName)) {
+    if (["PM10", "PM2.5", "PM1", "TSP", "Total Suspended Particles (TSP)"].includes(itemName)) {
       return "Bulk PM";
     }
 
     // Carbonaceous aerosols
     if (
-      ["Black carbon (BC)","Organic carbon (OC)"].includes(
+      ["BC", "OC", "Black carbon (BC)", "Organic carbon (OC)"].includes(
         itemName,
       )
     ) {
@@ -350,9 +357,7 @@ export async function getPollutants(): Promise<PollutantInfo[]> {
             (measurement.category && categoryLabels[measurement.category]) ||
             getCategory(measurement.item_name);
           const name =
-            measurement.item_name === "TSP"
-              ? "Total Suspended Particles (TSP)"
-              : measurement.item_name;
+            pollutantDisplayNames[measurement.item_name] ?? measurement.item_name;
 
           // Keep the API item_name as the key.
           if (!pollutants.has(measurement.item_name)) {
