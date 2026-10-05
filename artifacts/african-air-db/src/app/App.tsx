@@ -30,7 +30,6 @@ import {
   getAllAreas,
   getDatasetStats,
   getPollutantsByCategory,
-  getSettings,
   getStudyById,
 } from "./services/studyService";
 import type {
@@ -540,33 +539,7 @@ export default function App() {
   const { data: stats } = useAsync(getDatasetStats);
   const { data: categoriesData } = useAsync(getPollutantsByCategory);
   const { data: allAreasData } = useAsync(getAllAreas);
-  const { data: settingsList } = useAsync(getSettings);
   const [selectedCityName, setSelectedCityName] = useState<string | null>(null);
-
-  // Year buckets derived from the dataset's real sampling-year range.
-  const yearOptions = useMemo(() => {
-    if (!stats?.yearFrom || !stats?.yearTo) return ["All years"];
-    const opts: string[] = ["All years"];
-    for (let to = stats.yearTo; to >= stats.yearFrom; to -= 5) {
-      const from = Math.max(stats.yearFrom, to - 4);
-      opts.push(`${from}-${to}`);
-    }
-    return opts;
-  }, [stats]);
-
-  // Setting keywords derived from real record descriptions (e.g. "Urban- Residential").
-  const settingOptions = useMemo(() => {
-    const tokens = new Set<string>();
-    (settingsList || []).forEach((s) => {
-      const head = s.split(/[-–;,]/)[0].trim();
-      if (head) tokens.add(head);
-    });
-    return ["All settings", ...[...tokens].sort()];
-  }, [settingsList]);
-
-  const [yearFilter, setYearFilter] = useState("All years");
-  const [topicFilter, setTopicFilter] = useState("All Topics");
-  const [designFilter, setDesignFilter] = useState("All settings");
 
   const [selectedCountryId, setSelectedCountryId] = useState("504");
   const [selectedCountryName, setSelectedCountryName] = useState("Morocco");
@@ -753,21 +726,6 @@ export default function App() {
   const activeFilters = useMemo<StudyFilters>(() => {
     const f: StudyFilters = {};
     if (searchQuery) f.query = searchQuery;
-    if (yearFilter !== "All years") {
-      const [from, to] = yearFilter.split("-").map(Number);
-      f.yearFrom = from;
-      f.yearTo = to;
-    }
-    if (topicFilter !== "All Topics") {
-      // Find the key for the topic
-      const p = categoriesData
-        ?.flatMap((c) => c.pollutants)
-        .find((p) => p.name === topicFilter);
-      if (p) f.pollutants = [p.key];
-    }
-    if (designFilter !== "All settings") {
-      f.settings = [designFilter];
-    }
     const activeTabConfig = TABS[activeTab];
 
     if (
@@ -781,14 +739,10 @@ export default function App() {
     return f;
   }, [
     searchQuery,
-    yearFilter,
-    topicFilter,
-    designFilter,
     selectedPollutants,
     hasUserChangedPollutants,
     activeTab,
     TABS,
-    categoriesData,
   ]);
 
   const { data: countrySummariesData } = useAsync(
@@ -1494,11 +1448,11 @@ export default function App() {
                 {TABS[activeTab].source === "static" &&
                 (TABS[activeTab].subTabs?.length ?? 0) > 0 ? (
                   <>
-                    <div className="-mx-3 overflow-x-auto overscroll-x-contain px-3 pb-0.5 sm:-mx-4 sm:px-4">
+                    <div className="min-w-0">
                       <div
                         role="tablist"
                         aria-label={`${TABS[activeTab].label} subcategories`}
-                        className="flex w-max min-w-full flex-nowrap items-center gap-1.5"
+                        className="flex w-full flex-nowrap items-center gap-0"
                       >
                         {TABS[activeTab].subTabs?.map((subTab, idx) => (
                           <button
@@ -1518,7 +1472,7 @@ export default function App() {
                                 setActiveSubTab,
                               )
                             }
-                            className={`min-h-7 shrink-0 whitespace-nowrap rounded-md border px-2.5 py-0.5 text-[11px] font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
+                            className={`min-h-7 shrink-0 whitespace-nowrap rounded-md border px-0.5 py-0.5 text-[clamp(8px,0.7vw,10px)] font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
                               activeSubTab === idx
                                 ? "border-primary/20 bg-white text-primary shadow-sm"
                                 : "border-transparent text-muted-foreground hover:bg-white/75 hover:text-foreground"
@@ -1765,7 +1719,7 @@ export default function App() {
                           : "city clusters"}
                       </span>
                     </div>
-                    {activeFilters && (
+                    {isFiltering && (
                       <div className="mt-1 text-primary">filtered map</div>
                     )}
                   </div>
@@ -1919,20 +1873,17 @@ export default function App() {
                   ))}
                 </div>
 
-                <div className="px-4 py-3 border-b border-border">
-                  <div className="flex items-center justify-between mb-2">
+                <div className="px-4 py-2 border-b border-border">
+                  <div className="flex items-center justify-between">
                     <span className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
                       Filters
-                      {activeFilters && (
+                      {isFiltering && (
                         <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
                       )}
                     </span>
                     <button
                       onClick={() => {
                         setSearchQuery("");
-                        setYearFilter("All years");
-                        setTopicFilter("All Topics");
-                        setDesignFilter("All settings");
                         setSelectedPollutants(
                           new Set(TABS[activeTab]?.keys ?? []),
                         );
@@ -1947,80 +1898,11 @@ export default function App() {
                       {isFiltering ? "Clear Filters" : "Clear"}
                     </button>
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    {[
-                      {
-                        val: yearFilter,
-                        set: setYearFilter,
-                        opts: yearOptions,
-                        defaults: "All years",
-                      },
-                      {
-                        val: topicFilter,
-                        set: setTopicFilter,
-                        opts: [
-                          "All Topics",
-                          ...(categoriesData
-                            ?.flatMap((c) => c.pollutants)
-                            .map((p) => p.name) || []),
-                        ],
-                        defaults: "All Topics",
-                      },
-                      {
-                        val: designFilter,
-                        set: setDesignFilter,
-                        opts: settingOptions,
-                        defaults: "All settings",
-                      },
-                    ].map(({ val, set, opts, defaults }, i) => {
-                      const isActive = val !== defaults;
-                      return (
-                        <div key={i} className="relative">
-                          <select
-                            value={val}
-                            onChange={(e) => set(e.target.value)}
-                            className={`w-full text-[10px] border rounded px-2 py-1.5 bg-background text-foreground appearance-none pr-5 cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary/30 transition-all duration-300 ${
-                              isActive
-                                ? "filter-active border-primary"
-                                : "border-border"
-                            }`}
-                          >
-                            {opts.map((o) => (
-                              <option key={o}>{o}</option>
-                            ))}
-                          </select>
-                          <ChevronDown
-                            size={10}
-                            className={`absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none transition-colors duration-300 ${
-                              isActive
-                                ? "text-primary"
-                                : "text-muted-foreground"
-                            }`}
-                          />
-                        </div>
-                      );
-                    })}
-                  </div>
                 </div>
 
                 {isFiltering && (
                   <div className="px-4 py-2 border-b border-border bg-muted/20">
                     <div className="flex flex-wrap gap-1.5">
-                      {yearFilter !== "All years" && (
-                        <span className="inline-flex items-center gap-1 rounded bg-primary/10 px-1.5 py-0.5 text-[9px] font-medium text-primary">
-                          Year: {yearFilter}
-                        </span>
-                      )}
-                      {topicFilter !== "All Topics" && (
-                        <span className="inline-flex items-center gap-1 rounded bg-primary/10 px-1.5 py-0.5 text-[9px] font-medium text-primary">
-                          Topic: {topicFilter}
-                        </span>
-                      )}
-                      {designFilter !== "All settings" && (
-                        <span className="inline-flex items-center gap-1 rounded bg-primary/10 px-1.5 py-0.5 text-[9px] font-medium text-primary">
-                          Setting: {designFilter}
-                        </span>
-                      )}
                       {hasUserChangedPollutants &&
                         selectedPollutants.size <
                           (TABS[activeTab]?.keys.length || 0) && (
