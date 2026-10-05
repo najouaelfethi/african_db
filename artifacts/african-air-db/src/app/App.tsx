@@ -618,9 +618,8 @@ export default function App() {
 
     return [
       {
-        label: "Particulate Matter",
+        label: "Observations",
         source: "static",
-        unit: "µg/m³",
         subTabs: partSubTabs,
         keys: partSubTabs.flatMap((tab) => tab.items.map((item) => item.key)),
       },
@@ -652,18 +651,6 @@ export default function App() {
           { name: "Emission inventories", key: "model-emissions" },
         ],
         keys: ["model-aod", "model-satellite", "model-ctm", "model-emissions"],
-      },
-      {
-        label: "Observations",
-        source: "static",
-        unit: "",
-        items: [
-          { name: "Ground stations", key: "obs-ground" },
-          { name: "Air quality networks", key: "obs-network" },
-          { name: "Observatory records", key: "obs-observatory" },
-          { name: "Long-term monitoring", key: "obs-longterm" },
-        ],
-        keys: ["obs-ground", "obs-network", "obs-observatory", "obs-longterm"],
       },
     ];
   }, [categoriesData]);
@@ -870,13 +857,7 @@ export default function App() {
 
   const isCardOnlyResearchTab =
     TABS[activeTab]?.label === "Campaigns" ||
-    TABS[activeTab]?.label === "Modeling & Remote Sensing" ||
-    TABS[activeTab]?.label === "Observations";
-
-  const particulateMatterItems = useMemo(() => {
-    if (TABS[activeTab]?.label !== "Particulate Matter") return [];
-    return TABS[activeTab].subTabs?.flatMap((subTab) => subTab.items) ?? [];
-  }, [TABS, activeTab]);
+    TABS[activeTab]?.label === "Modeling & Remote Sensing";
 
   const shouldRenderMap = page === "map" && !isCardOnlyResearchTab;
 
@@ -1172,24 +1153,6 @@ export default function App() {
             title: "Emission Inventory Fusion",
             meta: "Road + industry + biomass",
             body: "Merged activity data to compare emissions intensities across North, West, and East Africa.",
-          },
-        ];
-      case "Observations":
-        return [
-          {
-            title: "Urban Background Station",
-            meta: "Cairo · Active",
-            body: "PM10, NO2 and O3 time series from a representative city background site.",
-          },
-          {
-            title: "Industrial Monitoring Station",
-            meta: "Johannesburg · Active",
-            body: "Routine measurements for SO2, CO, PM2.5, and trace metal deposition near industrial zones.",
-          },
-          {
-            title: "High-Altitude Observatory",
-            meta: "Addis Ababa · Seasonal",
-            body: "Long-term aerosol and gas observations across elevated transport and dust plume periods.",
           },
         ];
       default:
