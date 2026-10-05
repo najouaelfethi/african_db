@@ -101,7 +101,10 @@ export interface CountrySummary {
   topoId: string | null;
   name: string;
   region: string;
+  /** Number of studies matching the active filters. */
   studyCount: number;
+  /** Unfiltered API total, retained for the map's denominator. */
+  totalStudyCount: number;
   recordCount: number;
   yearFrom: number | null;
   yearTo: number | null;

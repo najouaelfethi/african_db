@@ -670,38 +670,20 @@ export async function getCountrySummaries(
   filters?: StudyFilters,
 ): Promise<CountrySummary[]> {
   const data = await getPublicMapData();
+  const hasActiveFilters = Boolean(filters && Object.keys(filters).length > 0);
+  const noPollutantsSelected =
+    filters?.pollutants !== undefined && filters.pollutants.length === 0;
 
   const summaries: CountrySummary[] = data.countries.map((country) => {
     const countryName = canonicalCountryName(country.country);
-    const areas: AreaSummary[] = country.cities.map((city) => {
+    const cityStudies = country.cities.map((city) => {
       const areaName = canonicalAreaName(city.study_area);
       const coordinates =
         areaCoordinates(countryName, areaName) ??
         areaCoordinates(countryName, city.study_area) ??
         countryCoordinates(countryName);
 
-      return {
-        name: areaName,
-        country: countryName,
-        coordinates: coordinates ?? [0, 0],
-        studyCount: city.study_count,
-        settings: [],
-        studies: city.studies.map((study) => {
-          const { yearFrom, yearTo } = getStudyYears(study);
-
-          return {
-            id: study.id,
-            source: study.source,
-            title: study.title,
-            yearFrom,
-            yearTo,
-          };
-        }),
-      };
-    });
-
-    const studies: Study[] = country.cities.flatMap((city) =>
-      city.studies.map((study) => {
+      const studies: Study[] = city.studies.map((study) => {
         const { yearFrom, yearTo } = getStudyYears(study);
 
         return {
@@ -718,8 +700,33 @@ export async function getCountrySummaries(
           yearTo,
           records: [createStudyRecord(study, city.study_area)],
         };
-      }),
-    );
+      });
+      const matchingStudies = noPollutantsSelected
+        ? []
+        : hasActiveFilters
+          ? studies.filter((study) => matchesFilters(study, filters!))
+          : studies;
+
+      return { city, areaName, coordinates, matchingStudies };
+    });
+
+    const studies = cityStudies.flatMap(({ matchingStudies }) => matchingStudies);
+    const areas: AreaSummary[] = cityStudies
+      .filter(({ matchingStudies }) =>
+        hasActiveFilters ? matchingStudies.length > 0 : true,
+      )
+      .map(({ areaName, coordinates, matchingStudies }) => ({
+        name: areaName,
+        country: countryName,
+        coordinates: coordinates ?? [0, 0],
+        studyCount: matchingStudies.length,
+        settings: [],
+        studies: matchingStudies.map((study) => ({
+          id: study.id,
+          source: study.source,
+          title: study.title,
+        })),
+      }));
 
     const years = studies
       .flatMap((study) => [study.yearFrom, study.yearTo])
@@ -729,8 +736,9 @@ export async function getCountrySummaries(
       topoId: COUNTRY_TOPO_ID[countryName] ?? null,
       name: countryName,
       region: "",
-      studyCount: country.study_count,
-      recordCount: country.study_count,
+      studyCount: studies.length,
+      totalStudyCount: country.study_count,
+      recordCount: studies.length,
       yearFrom: years.length ? Math.min(...years) : null,
       yearTo: years.length ? Math.max(...years) : null,
       areas,

@@ -661,17 +661,21 @@ export default function App() {
   const [selectedPollutants, setSelectedPollutants] = useState<Set<string>>(
     new Set(),
   );
+  const [hasUserChangedPollutants, setHasUserChangedPollutants] =
+    useState(false);
   const [activeSubTab, setActiveSubTab] = useState(0);
 
   // Initialize selected pollutants when tab changes
   useEffect(() => {
     if (TABS.length > 0 && TABS[activeTab]) {
       setSelectedPollutants(new Set(TABS[activeTab].keys));
+      setHasUserChangedPollutants(false);
       setActiveSubTab(0);
     }
   }, [activeTab, TABS]);
 
   const togglePollutant = (key: string) => {
+    setHasUserChangedPollutants(true);
     setSelectedPollutants((prev) => {
       const next = new Set(prev);
       if (next.has(key)) next.delete(key);
@@ -702,7 +706,7 @@ export default function App() {
 
     if (
       activeTabConfig &&
-      selectedPollutants.size > 0 &&
+      hasUserChangedPollutants &&
       selectedPollutants.size < activeTabConfig.keys.length
     ) {
       // Send the selected API pollutant keys to the study filter.
@@ -715,6 +719,7 @@ export default function App() {
     topicFilter,
     designFilter,
     selectedPollutants,
+    hasUserChangedPollutants,
     activeTab,
     TABS,
     categoriesData,
@@ -737,8 +742,9 @@ export default function App() {
     () =>
       new Set(
         (countrySummariesData || [])
+          .filter((country) => country.studyCount > 0)
           .map((c) => c.topoId)
-          .filter(Boolean) as string[],
+          .filter((topoId): topoId is string => Boolean(topoId)),
       ),
     [countrySummariesData],
   );
@@ -1709,7 +1715,7 @@ export default function App() {
                   {[
                     {
                       val: isFiltering
-                        ? `${countryStudies.length}/${countrySummariesData?.find((c) => c.name === selectedCountryName)?.studyCount ?? 0}`
+                        ? `${countryStudies.length}/${selectedCountry?.totalStudyCount ?? selectedCountry?.studyCount ?? 0}`
                         : String(countryStudyCount),
                       label: "Studies",
                     },
@@ -1747,6 +1753,10 @@ export default function App() {
                         setYearFilter("All years");
                         setTopicFilter("All Topics");
                         setDesignFilter("All settings");
+                        setSelectedPollutants(
+                          new Set(TABS[activeTab]?.keys ?? []),
+                        );
+                        setHasUserChangedPollutants(false);
                       }}
                       className={`text-[10px] font-medium transition-all duration-300 ${
                         isFiltering
@@ -1831,11 +1841,11 @@ export default function App() {
                           Setting: {designFilter}
                         </span>
                       )}
-                      {selectedPollutants.size > 0 &&
+                      {hasUserChangedPollutants &&
                         selectedPollutants.size <
                           (TABS[activeTab]?.keys.length || 0) && (
                           <span className="inline-flex items-center gap-1 rounded bg-primary/10 px-1.5 py-0.5 text-[9px] font-medium text-primary">
-                            {selectedPollutants.size} Pollutants filtered
+                            {selectedPollutants.size} Pollutants selected
                           </span>
                         )}
                       {searchQuery && (
