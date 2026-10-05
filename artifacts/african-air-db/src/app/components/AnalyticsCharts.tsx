@@ -28,6 +28,15 @@ const CATEGORY_COLORS = [
   "#F97316",
 ];
 
+const CATEGORY_LABELS: Record<string, string> = {
+  bulk_pm: "Bulk PM",
+  carbonaceous: "Carbonaceous aerosols",
+  gas: "Atmospheric gases",
+  organic: "Organic pollutants",
+  trace_metals: "Trace metals",
+  wsia: "Water soluble inorganic aerosols",
+};
+
 const axisTick = { fontSize: 10, fill: "#8795A8" };
 const tooltipStyle = {
   fontSize: 12,
@@ -58,11 +67,11 @@ export default function AnalyticsCharts() {
 
       <div className="grid grid-cols-1 xl:grid-cols-[1.6fr_1fr] gap-4">
         <AnnualStudiesCard
-          key={yearRequest}
+          key={`annual-${yearRequest}`}
           onRetry={() => setYearRequest((request) => request + 1)}
         />
         <PollutantDistributionCard
-          key={pollutantRequest}
+          key={`pollutant-${pollutantRequest}`}
           onRetry={() => setPollutantRequest((request) => request + 1)}
         />
       </div>
@@ -85,7 +94,7 @@ function AnnualStudiesCard({ onRetry }: { onRetry: () => void }) {
   );
 
   return (
-    <article className="min-w-0 rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
+    <article className="flex h-full min-w-0 flex-col rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
       <div className="mb-4">
         <div className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
           Trend
@@ -105,7 +114,7 @@ function AnnualStudiesCard({ onRetry }: { onRetry: () => void }) {
         <ChartEmpty message="No annual study totals are available yet." />
       ) : (
         <div
-          className="h-52 min-w-0 sm:h-56"
+          className="min-h-52 min-w-0 flex-1 sm:min-h-56"
           role="img"
           aria-label="Area chart showing total studies by publication year"
         >
@@ -155,6 +164,7 @@ function AnnualStudiesCard({ onRetry }: { onRetry: () => void }) {
                 fill="url(#homeStudiesGradient)"
                 activeDot={{ r: 4, strokeWidth: 0 }}
                 dot={false}
+                isAnimationActive={false}
               />
             </AreaChart>
           </ResponsiveContainer>
@@ -179,8 +189,10 @@ function PollutantDistributionCard({ onRetry }: { onRetry: () => void }) {
 
     return Array.from(variablesByType.entries())
       .map(([name, variables]) => ({
-        name,
-        full: name,
+        name: CATEGORY_LABELS[name.toLowerCase()] ??
+          name.replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase()),
+        full: CATEGORY_LABELS[name.toLowerCase()] ??
+          name.replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase()),
         value: variables.size,
       }))
       .sort((a, b) => b.value - a.value || a.name.localeCompare(b.name));
