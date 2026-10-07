@@ -4,13 +4,22 @@ import * as schema from "./schema";
 
 const { Pool } = pg;
 
-if (!process.env.DATABASE_URL) {
-  throw new Error(
-    "DATABASE_URL must be set. Did you forget to provision a database?",
-  );
-}
+const databaseUrl = process.env.DATABASE_URL;
 
-export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-export const db = drizzle(pool, { schema });
+export const pool = databaseUrl
+  ? new Pool({ connectionString: databaseUrl })
+  : null;
+
+export const db = pool ? drizzle(pool, { schema }) : null;
+
+export function assertDb() {
+  if (!db) {
+    throw new Error(
+      "DATABASE_URL is not configured. Contact request persistence is unavailable until the backend database is provisioned.",
+    );
+  }
+
+  return db;
+}
 
 export * from "./schema";

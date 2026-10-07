@@ -20,6 +20,7 @@ import {
   X,
   SlidersHorizontal,
   Layers,
+  Mail,
   MapPin,
   Minus,
   Plus,
@@ -42,6 +43,7 @@ import { useAsync } from "./hooks/useData";
 import SearchPage from "./SearchPage";
 import StudyDetailPage from "./StudyDetailPage";
 import HomePage from "./HomePage";
+import ContactPage from "./ContactPage";
 import { Chem, unitToHtml } from "./utils/chemFormat";
 import AdminDashboard from "./AdminDashboard";
 import MeasureFilterControls, {
@@ -50,7 +52,6 @@ import MeasureFilterControls, {
 } from "./components/MeasureFilterControls";
 /*temporary adding this import*/
 import { testMapApi } from "./services/studyService";
-
 
 const MAP_CONFIG = {
   view: {
@@ -487,7 +488,8 @@ function CountryFlag({ country }: { country: string }) {
   );
 }
 
-type Page = "home" | "map" | "search" | "details" | "admin" | "login";
+type Page =
+  "home" | "map" | "search" | "details" | "contact" | "admin" | "login";
 type InternalPage = Exclude<Page, "admin" | "login">;
 
 interface AppHistoryEntry {
@@ -557,8 +559,8 @@ function handleTabKeyDown(
   onSelect(nextIndex);
   event.currentTarget
     .closest('[role="tablist"]')
-    ?.querySelectorAll<HTMLButtonElement>('[role="tab"]')[nextIndex]
-    ?.focus();
+    ?.querySelectorAll<HTMLButtonElement>('[role="tab"]')
+    [nextIndex]?.focus();
 }
 
 export default function App() {
@@ -575,9 +577,7 @@ export default function App() {
   const initialHistoryEntry = readAppHistoryEntry(
     typeof window === "undefined" ? null : window.history.state,
   );
-  const [page, setPage] = useState<Page>(
-    initialHistoryEntry?.page ?? "home",
-  );
+  const [page, setPage] = useState<Page>(initialHistoryEntry?.page ?? "home");
   const [activeTab, setActiveTab] = useState(0);
   const [expanded, setExpanded] = useState<Set<string>>(new Set(["Fez"]));
   const [searchQuery, setSearchQuery] = useState("");
@@ -629,7 +629,9 @@ export default function App() {
       const entry = readAppHistoryEntry(event.state);
       if (!entry) return;
       setPage(entry.page);
-      setSelectedStudyId(entry.page === "details" ? entry.selectedStudyId : null);
+      setSelectedStudyId(
+        entry.page === "details" ? entry.selectedStudyId : null,
+      );
       detailReturnPageRef.current = entry.detailReturnPage;
     };
 
@@ -746,18 +748,8 @@ export default function App() {
         label: "Campaigns",
         source: "static",
         unit: "",
-        items: [
-          { name: "Field campaigns", key: "campaign-field" },
-          { name: "Urban monitoring", key: "campaign-urban" },
-          { name: "Intensive observations", key: "campaign-intensive" },
-          { name: "Rural background studies", key: "campaign-rural" },
-        ],
-        keys: [
-          "campaign-field",
-          "campaign-urban",
-          "campaign-intensive",
-          "campaign-rural",
-        ],
+        items: [],
+        keys: [],
       },
       {
         label: "Modeling & Remote Sensing",
@@ -924,6 +916,10 @@ export default function App() {
       return;
     }
     if (id === "login" || id === page) return;
+    if (id === "contact") {
+      setPage("contact");
+      return;
+    }
     pushInternalPage(id);
   };
 
@@ -1228,6 +1224,7 @@ export default function App() {
     { id: "home" as Page, icon: Home, label: "Home" },
     { id: "map" as Page, icon: MapIcon, label: "Explore Map" },
     { id: "search" as Page, icon: SlidersHorizontal, label: "Research" },
+    { id: "contact" as Page, icon: Mail, label: "Contact" },
     { id: "admin" as Page, icon: Info, label: "Admin" },
   ];
 
@@ -1313,7 +1310,7 @@ export default function App() {
                 type="button"
                 onClick={() => navigateToPage(id)}
                 aria-current={isActive ? "page" : undefined}
-                className={`sidebar-nav-item group relative flex min-h-11 items-center gap-3 w-full px-3 py-2.5 rounded-lg text-[13px] transition-all duration-150 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8AB7FF]
+                className={`sidebar-nav-item group relative flex min-h-11 items-center gap-3 w-full px-3 py-2.5 rounded-lg text-[13px] transition-all duration-150 text-left focus-visible:outline2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8AB7FF]
                   ${
                     isActive
                       ? "bg-white/12 text-white font-medium shadow-sm"
@@ -1336,7 +1333,7 @@ export default function App() {
         </nav>
 
         {/* ── Map controls (context panel) ── */}
-        {page === "map" && (
+        {page === "map" && !isCardOnlyResearchTab && (
           <div className="mx-3 mt-4 rounded-lg sidebar-controls-panel px-3 py-3">
             <div className="text-[10px] font-semibold tracking-widest text-white/35 uppercase mb-2.5">
               Map Display
@@ -1400,9 +1397,7 @@ export default function App() {
               page === "search" ? "flex" : "hidden"
             }`}
           >
-            <SearchPage
-              onOpenStudy={(id) => openStudyDetail({ id })}
-            />
+            <SearchPage onOpenStudy={(id) => openStudyDetail({ id })} />
           </div>
           {page === "details" && selectedStudyId && (
             <StudyDetailPage
@@ -1418,6 +1413,8 @@ export default function App() {
           onBack={closeStudyDetail}
           onNavigateToCountry={navigateToCountry}
         />
+      ) : page === "contact" ? (
+        <ContactPage onBack={() => navigateToPage("home")} />
       ) : page === "login" ? (
         <div className="flex flex-col flex-1 items-center justify-center bg-[#FCFDFF] p-6">
           <div className="w-full max-w-md rounded-3xl border border-border bg-white px-8 py-10 shadow-sm">
@@ -1515,10 +1512,10 @@ export default function App() {
                     onKeyDown={(event) =>
                       handleTabKeyDown(event, i, TABS.length, setActiveTab)
                     }
-                    className={`relative flex min-h-11 shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 px-4 py-3 text-xs font-medium transition-colors focus-visible:z-10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary
+                    className={`relative flex min-h-11 shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 px-4 py-3 text-xs font-medium transition-colors focus-visible:z-10 focus-visible:outline2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary
                       ${
                         activeTab === i
-                          ? "border-primary bg-primary/[0.04] text-primary"
+                          ? "border-primary bg-primary/4 text-primary"
                           : "border-transparent text-muted-foreground hover:bg-muted/50 hover:text-foreground"
                       }`}
                   >
@@ -1549,7 +1546,7 @@ export default function App() {
                 {TABS[activeTab].source === "static" &&
                 (TABS[activeTab].subTabs?.length ?? 0) > 0 ? (
                   <>
-                    <div className="min-w-0 [container-type:inline-size]">
+                    <div className="min-w-0 @container">
                       <div
                         role="tablist"
                         aria-label={`${TABS[activeTab].label} subcategories`}
@@ -1629,9 +1626,7 @@ export default function App() {
                     ))}
                   </div>
                 ) : (
-                  <p className="text-xs text-muted-foreground">
-                    No filters are available in this category yet.
-                  </p>
+                  <p className="text-xs text-muted-foreground"></p>
                 )}
               </div>
             )}
@@ -1642,54 +1637,60 @@ export default function App() {
             {/* Map or placeholder cards */}
             <div className="relative flex-1 overflow-hidden bg-[#F7F9FC]">
               {isCardOnlyResearchTab ? (
-                <div className="h-full overflow-auto p-5">
-                  <div className="mx-auto max-w-3xl">
-                    <div className="mb-4 flex items-center justify-between gap-3">
-                      <div>
-                        <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                          {TABS[activeTab]?.label}
-                        </div>
-                        <h3 className="mt-1 text-xl font-semibold text-foreground">
-                          {TABS[activeTab]?.label === "Campaigns"
-                            ? "Field initiatives"
-                            : TABS[activeTab]?.label ===
-                                "Modeling & Remote Sensing"
-                              ? "Analytical workflows"
-                              : "Monitoring network"}
-                        </h3>
-                      </div>
-                      <span className="rounded-full border border-primary/20 bg-primary/5 px-2.5 py-1 text-[10px] font-medium text-primary">
-                        Placeholder data
-                      </span>
-                    </div>
-
-                    <div className="grid gap-3">
-                      {activeSectionCards.map((card) => (
-                        <div
-                          key={card.title}
-                          className="rounded-2xl border border-border bg-white p-4 shadow-sm transition hover:border-primary/30 hover:shadow-md"
-                        >
-                          <div className="flex items-start justify-between gap-3">
-                            <div>
-                              <h4 className="text-sm font-semibold text-foreground">
-                                {card.title}
-                              </h4>
-                              <p className="mt-1 text-[11px] text-muted-foreground">
-                                {card.meta}
-                              </p>
-                            </div>
-                            <span className="mt-0.5 rounded-full bg-[#EEF3FF] px-2 py-1 text-[9px] font-semibold uppercase tracking-wide text-primary">
-                              Active
-                            </span>
+                TABS[activeTab]?.label === "Campaigns" ? (
+                  <div className="h-full w-full bg-white">
+                    <iframe
+                      src="/observatories-map/index.html"
+                      title="African Observatories Map"
+                      className="h-full w-full border-0"
+                    />
+                  </div>
+                ) : (
+                  <div className="h-full overflow-auto p-5">
+                    <div className="mx-auto max-w-3xl">
+                      <div className="mb-4 flex items-center justify-between gap-3">
+                        <div>
+                          <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                            {TABS[activeTab]?.label}
                           </div>
-                          <p className="mt-3 text-[12px] leading-6 text-foreground/75">
-                            {card.body}
-                          </p>
+                          <h3 className="mt-1 text-xl font-semibold text-foreground">
+                            Analytical workflows
+                          </h3>
                         </div>
-                      ))}
+                        <span className="rounded-full border border-primary/20 bg-primary/5 px-2.5 py-1 text-[10px] font-medium text-primary">
+                          Placeholder data
+                        </span>
+                      </div>
+
+                      <div className="grid gap-3">
+                        {activeSectionCards.map((card) => (
+                          <div
+                            key={card.title}
+                            className="rounded-2xl border border-border bg-white p-4 shadow-sm transition hover:border-primary/30 hover:shadow-md"
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <h4 className="text-sm font-semibold text-foreground">
+                                  {card.title}
+                                </h4>
+                                <p className="mt-1 text-[11px] text-muted-foreground">
+                                  {card.meta}
+                                </p>
+                              </div>
+                              <span className="mt-0.5 rounded-full bg-[#EEF3FF] px-2 py-1 text-[9px] font-semibold uppercase tracking-wide text-primary">
+                                Active
+                              </span>
+                            </div>
+
+                            <p className="mt-3 text-[12px] leading-6 text-foreground/75">
+                              {card.body}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </div>
-                </div>
+                )
               ) : (
                 <>
                   <div

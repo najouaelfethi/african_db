@@ -29,6 +29,7 @@ import {
   Filter,
   Globe,
   LogOut,
+  Mail,
   Plus,
   RefreshCw,
   Search,
@@ -54,6 +55,11 @@ import {
   getPollutantsByCategory,
   queryStudies,
 } from "./services/studyService";
+import {
+  getContactRequests,
+  updateContactRequestStatus,
+  type ContactRequestRecord,
+} from "./services/contactService";
 import { COUNTRY_TOPO_ID } from "./data/geo";
 import arcairLogo from "../assets/arcair-logo.png";
 import { useAsync } from "./hooks/useData";
@@ -62,7 +68,13 @@ import type { Study } from "./types/arcair";
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 type AdminTab =
-  "dashboard" | "research" | "data" | "analytics" | "users" | "settings";
+  | "dashboard"
+  | "research"
+  | "data"
+  | "analytics"
+  | "requests"
+  | "users"
+  | "settings";
 
 interface AdminDashboardProps {
   onLogout: () => void;
@@ -80,6 +92,7 @@ const SIDEBAR_NAV: {
   { id: "research", label: "Research Data", Icon: BookOpen },
   { id: "data", label: "Data Management", Icon: Database },
   { id: "analytics", label: "Analytics", Icon: Activity },
+  { id: "requests", label: "Contact Requests", Icon: Mail },
   { id: "users", label: "Users", Icon: Users },
   { id: "settings", label: "Settings", Icon: Settings },
 ];
@@ -1262,6 +1275,154 @@ function AnalyticsTab() {
   );
 }
 
+// ─── Contact Requests Tab ───────────────────────────────────────────────────
+
+function ContactRequestsTab() {
+  const { data: requests, loading, error } = useAsync(getContactRequests, []);
+
+  const handleStatusUpdate = async (
+    id: number,
+    status: "Pending" | "Valid" | "Disapproved",
+  ) => {
+    try {
+      await updateContactRequestStatus(id, status);
+      window.location.reload();
+    } catch (requestError) {
+      console.error("Failed to update contact request status", requestError);
+    }
+  };
+
+  const badgeClass = (status: string) => {
+    switch (status) {
+      case "Valid":
+        return "bg-emerald-100 text-emerald-700";
+      case "Disapproved":
+        return "bg-red-100 text-red-700";
+      default:
+        return "bg-amber-100 text-amber-700";
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+        <h3 className="font-semibold text-slate-800">Contact Requests</h3>
+        <p className="mt-1 text-[12px] text-slate-500">
+          Review new public inquiries, collaboration requests, and research
+          submissions.
+        </p>
+      </div>
+
+      {loading && (
+        <div className="rounded-2xl border border-slate-100 bg-white p-6 text-sm text-slate-500">
+          Loading requests…
+        </div>
+      )}
+
+      {error && (
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          {error.message || "Unable to load contact requests."}
+        </div>
+      )}
+
+      {!loading && !error && (!requests || requests.length === 0) && (
+        <div className="rounded-2xl border border-slate-100 bg-white p-6 text-sm text-slate-500">
+          No contact requests have been submitted yet.
+        </div>
+      )}
+
+      {!loading && !error && requests && requests.length > 0 && (
+        <div className="space-y-4">
+          {requests.map((request: ContactRequestRecord) => (
+            <div
+              key={request.id}
+              className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm"
+            >
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                <div className="space-y-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h4 className="text-base font-semibold text-slate-800">
+                      {request.subject}
+                    </h4>
+                    <span
+                      className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${badgeClass(request.status)}`}
+                    >
+                      {request.status}
+                    </span>
+                  </div>
+                  <div className="grid gap-2 text-[12px] text-slate-600 md:grid-cols-2">
+                    <div>
+                      <span className="font-medium text-slate-800">Name:</span>{" "}
+                      {request.fullName}
+                    </div>
+                    <div>
+                      <span className="font-medium text-slate-800">Email:</span>{" "}
+                      {request.email}
+                    </div>
+                    <div>
+                      <span className="font-medium text-slate-800">
+                        Institution:
+                      </span>{" "}
+                      {request.institution}
+                    </div>
+                    <div>
+                      <span className="font-medium text-slate-800">Type:</span>{" "}
+                      {request.requestType}
+                    </div>
+                    <div className="md:col-span-2">
+                      <span className="font-medium text-slate-800">
+                        Submitted:
+                      </span>{" "}
+                      {new Date(request.createdAt).toLocaleString()}
+                    </div>
+                  </div>
+                  <div className="rounded-xl bg-slate-50 p-3 text-[12px] text-slate-700">
+                    <div className="font-medium text-slate-800 mb-1">
+                      Message
+                    </div>
+                    <p className="whitespace-pre-wrap">{request.message}</p>
+                  </div>
+                  {request.details && (
+                    <div className="rounded-xl bg-slate-50 p-3 text-[12px] text-slate-700">
+                      <div className="font-medium text-slate-800 mb-1">
+                        Additional details
+                      </div>
+                      <p className="whitespace-pre-wrap">{request.details}</p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex flex-col gap-2 min-w-[170px]">
+                  <button
+                    onClick={() => handleStatusUpdate(request.id, "Valid")}
+                    className="rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700 transition"
+                  >
+                    Approve / Validate
+                  </button>
+                  <button
+                    onClick={() =>
+                      handleStatusUpdate(request.id, "Disapproved")
+                    }
+                    className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-100 transition"
+                  >
+                    Disapprove
+                  </button>
+                  <button
+                    onClick={() => handleStatusUpdate(request.id, "Pending")}
+                    className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-700 hover:bg-amber-100 transition"
+                  >
+                    Set Pending
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Users Tab ────────────────────────────────────────────────────────────────
 
 function UsersTab() {
@@ -1429,6 +1590,7 @@ export default function AdminDashboard({
     research: "Research Data",
     data: "Data Management",
     analytics: "Analytics",
+    requests: "Contact Requests",
     users: "Users",
     settings: "Settings",
   };
@@ -1538,6 +1700,7 @@ export default function AdminDashboard({
           {activeTab === "research" && <ResearchDataTab />}
           {activeTab === "data" && <DataManagementTab />}
           {activeTab === "analytics" && <AnalyticsTab />}
+          {activeTab === "requests" && <ContactRequestsTab />}
           {activeTab === "users" && <UsersTab />}
           {activeTab === "settings" && <SettingsTab />}
         </div>

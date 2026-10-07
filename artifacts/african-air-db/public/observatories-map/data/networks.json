@@ -1,0 +1,96 @@
+{
+  "aeronet": {
+    "key": "aeronet",
+    "name": "AERONET",
+    "full": "AErosol RObotic NETwork",
+    "type": "Monitoring / observation network",
+    "intro": "The AERONET program is a federation of ground-based remote sensing aerosol networks established by NASA and PHOTONS. The project has provided long-term, continuous, and readily accessible public domain database of aerosol optical, microphysical and radiative properties for aerosol research and characterization, validation of satellite retrievals, and synergism with other databases. The network imposes standardization of instruments, calibration, processing and distribution.",
+    "website": "https://aeronet.gsfc.nasa.gov/",
+    "database": "https://aeronet.gsfc.nasa.gov/new_web/data.html",
+    "publications": [
+      "https://aeronet.gsfc.nasa.gov/new_web/publications.html"
+    ],
+    "shape": "circle",
+    "kind": "network",
+    "pubsPage": true
+  },
+  "indaaf": {
+    "key": "indaaf",
+    "name": "INDAAF",
+    "full": "International Network to study Deposition and Atmospheric chemistry in AFrica",
+    "type": "Observation network / Long-term monitoring station",
+    "intro": "INDAAF is a long-term atmospheric observation network operating across representative African ecosystems. It provides continuous measurements of atmospheric composition and wet and dry deposition, supporting research on atmospheric processes, biogeochemical cycles and environmental change.",
+    "website": "https://indaaf.obs-mip.fr/",
+    "database": "https://indaaf.obs-mip.fr/catalogue/?currentSelection=a48b0f8f-5b2f-488e-8b1c-cab28bc6dbb3",
+    "publications": [
+      "https://indaaf.obs-mip.fr/references/"
+    ],
+    "shape": "square",
+    "kind": "network"
+  },
+  "safari2000": {
+    "key": "safari2000",
+    "name": "SAFARI 2000",
+    "full": "Southern African Regional Science Initiative",
+    "type": "Field campaign",
+    "kind": "campaign",
+    "shape": "triangle",
+    "countries": [
+      "Botswana",
+      "Namibia",
+      "South Africa",
+      "Zambia"
+    ],
+    "intro": "SAFARI 2000 was an international field campaign led by NASA that ran from August 1999 to March 2001. It studied how land-surface processes, biomass burning, industrial emissions and atmospheric transport shape the chemistry and climate of southern Africa, combining ground stations and flux towers with aircraft and satellite measurements. Its most intensive phase took place during the dry, burning season of August–September 2000.",
+    "website": "https://impact.earthdata.nasa.gov/casei/campaign/SAFARI%202000/",
+    "database": "https://impact.earthdata.nasa.gov/casei/campaign/SAFARI%202000/#data",
+    "publications": []
+  },
+  "ndacc": {
+    "key": "ndacc",
+    "name": "NDACC",
+    "full": "Network for the Detection of Atmospheric Composition Change",
+    "type": "Observation Network",
+    "kind": "network",
+    "shape": "diamond",
+    "intro": "NDACC is an international network of measurement stations dedicated to the long-term monitoring of atmospheric composition and chemistry. It mainly relies on ground-based remote-sensing techniques to monitor ozone, trace gases, aerosols and atmospheric parameters, in order to study changes in atmospheric composition and their impacts on climate.",
+    "website": "https://ndacc.larc.nasa.gov/",
+    "database": null,
+    "publications": [
+      "https://doi.org/10.3390/atmos10100589",
+      "https://doi.org/10.1016/S1364-6826(03)00006-3"
+    ]
+  },
+  "shadoz": {
+    "key": "shadoz",
+    "name": "SHADOZ",
+    "full": "Southern Hemisphere ADditional OZonesondes",
+    "type": "Cooperative network of NDACC",
+    "kind": "network",
+    "shape": "star",
+    "intro": "SHADOZ is a NASA-led cooperative network, started in 1998, that coordinates balloon-borne ozonesonde and radiosonde launches at tropical and subtropical stations. It provides a consistent archive of ozone profiles from the surface to the stratosphere, used for satellite validation and to study tropical ozone, pollution transport and long-term trends.",
+    "website": "https://tropo.gsfc.nasa.gov/shadoz/Archive.html",
+    "database": null,
+    "datasets": [
+      "https://doi.org/10.57721/SHADOZ-V06",
+      "https://doi.org/10.57721/SHADOZ-V01-UNC"
+    ],
+    "publications": [
+      "https://doi.org/10.1029/2009JD013320",
+      "https://doi.org/10.1029/2010JD015195",
+      "https://doi.org/10.1029/2022EA002459",
+      "https://doi.org/10.1029/1999JD900470",
+      "https://doi.org/10.1029/2001JD000967",
+      "https://doi.org/10.1029/2002JD002241",
+      "https://doi.org/10.1029/2005JD007042",
+      "https://doi.org/10.5194/acp-14-9855-2014",
+      "https://doi.org/10.1029/2021JD034691",
+      "https://doi.org/10.1029/2009JD013429",
+      "https://doi.org/10.1029/2011JD016911",
+      "https://doi.org/10.1002/2016JD026403",
+      "https://doi.org/10.1002/2017JD027406",
+      "https://doi.org/10.1002/2017JD027791",
+      "https://doi.org/10.5194/acp-9-1723-2009"
+    ]
+  }
+}

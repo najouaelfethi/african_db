@@ -26,6 +26,9 @@ import um6p_ccse_logo from "../assets/um6p-ccse-logo.png";
 import team_wahid from "../assets/team-wahid.jpg";
 import team_leonard from "../assets/team-leonard.jpg";
 import team_naaima from "../assets/team-naaima.jpg";
+import team_pauline from "../assets/team-pauline.jpeg";
+import team_najoua from "../assets/team-najoua.jpg";
+import team_mohamed from "../assets/team-mohamed.jpg";
 
 interface HomePageProps {
   stats: DatasetStats | null;
@@ -80,10 +83,8 @@ export default function HomePage({
   onBrowseResearch,
   onAdmin,
 }: HomePageProps) {
-  const {
-    data: publicStatisticsCounts,
-    error: publicStatisticsCountsError,
-  } = useAsync(getPublicStatisticsCounts, []);
+  const { data: publicStatisticsCounts, error: publicStatisticsCountsError } =
+    useAsync(getPublicStatisticsCounts, []);
   const totalMeasurements = useCountUp(
     publicStatisticsCounts?.totalMeasurements,
   );
@@ -115,7 +116,7 @@ export default function HomePage({
             campaigns, monitoring stations and observatory records, on
             particulate matter and its chemical composition, and atmospheric
             gases across the continent curated by the African Research Center on
-            Air Quality and Climate (ARC_Air) at UM6P.
+            Air Quality and Climate (ARC AIR) at UM6P.
           </p>
           <div className="flex items-center justify-center gap-4 pt-4">
             <button
@@ -146,12 +147,8 @@ export default function HomePage({
             <StatCard
               icon={Database}
               label="Total Measurements"
-              value={
-                publicStatisticsCounts ? totalMeasurements : undefined
-              }
-              staticValue={
-                publicStatisticsCountsError ? "N/A" : undefined
-              }
+              value={publicStatisticsCounts ? totalMeasurements : undefined}
+              staticValue={publicStatisticsCountsError ? "N/A" : undefined}
             />
             <StatCard
               icon={Globe2}
@@ -161,12 +158,8 @@ export default function HomePage({
             <StatCard
               icon={FlaskConical}
               label="Monitored Parameters"
-              value={
-                publicStatisticsCounts ? totalVariables : undefined
-              }
-              staticValue={
-                publicStatisticsCountsError ? "N/A" : undefined
-              }
+              value={publicStatisticsCounts ? totalVariables : undefined}
+              staticValue={publicStatisticsCountsError ? "N/A" : undefined}
             />
             <StatCard
               icon={Calendar}
@@ -264,27 +257,27 @@ export default function HomePage({
           </div>
         </section>
 
-        {/* ARC_Air Section */}
+        {/* ARC AIR Section */}
         <section className="space-y-8">
           <div className="text-center max-w-3xl mx-auto space-y-4">
             <p className="text-sm font-semibold uppercase tracking-[0.2em] text-primary">
               The lab behind the database
             </p>
             <h2 className="text-3xl md:text-4xl font-semibold tracking-tight">
-              ARC_Air - African Research Center on Air Quality and Climate
+              ARC AIR - African Research Center on Air Quality and Climate
             </h2>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-[1.3fr_0.7fr] gap-6 items-start">
             <div className="space-y-5">
               <p className="text-muted-foreground leading-relaxed text-lg">
-                Africa Database is built and maintained by ARC_Air, a research
+                Africa Database is built and maintained by ARC AIR, a research
                 center within the College of Chemical Sciences and Engineering
                 at Mohammed VI Polytechnic University (UM6P), in Benguerir,
                 Morocco.
               </p>
               <p className="text-muted-foreground leading-relaxed text-lg">
-                ARC_Air works to advance the scientific understanding of air
+                ARC AIR works to advance the scientific understanding of air
                 quality, atmospheric chemistry and climate across Africa
                 combining ground measurements, field campaigns and modelling to
                 fill long-standing data gaps on the continent. Alongside its
@@ -362,36 +355,40 @@ export default function HomePage({
             </h2>
           </div>
           <p className="text-muted-foreground leading-relaxed text-lg max-w-4xl mx-auto text-center">
-            A team within ARC_Air maintains the database, its data pipeline and
+            A team within ARC AIR maintains the database, its data pipeline and
             this site.
           </p>
 
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             <TeamCard
-              name="Wahid Mellouki"
-              role="Head of ARC_Air • Full Professor, UM6P"
+              name="Prof. Wahid Mellouki"
+              role="Head of ARC AIR"
               image={team_wahid}
             />
             <TeamCard
-              name="Leonard Kirago"
+              name="Dr. Leonard Kirago"
               role="Postdoctoral Researcher"
               image={team_leonard}
             />
             <TeamCard
-              name="Pauline Pouyes"
+              name="Dr. Pauline Pouyes"
               role="Postdoctoral Researcher"
-              image=""
+              image={team_pauline}
             />
             <TeamCard
               name="Naaima Ben Kadour"
               role="Data Scientist"
               image={team_naaima}
             />
-            <TeamCard name="Najoua ElFethi" role="Data Scientist" image="" />
+            <TeamCard
+              name="Najoua ElFethi"
+              role="Data Scientist"
+              image={team_najoua}
+            />
             <TeamCard
               name="Mohamed El Aouan"
               role="Research Assistant"
-              image=""
+              image={team_mohamed}
             />
           </div>
 
@@ -457,7 +454,7 @@ export default function HomePage({
             </h3>
             <p className="text-sm text-muted-foreground max-w-sm leading-relaxed">
               A curated, searchable database of air quality and climate research
-              across Africa, built and maintained by ARC_Air at Mohammed VI
+              across Africa, built and maintained by ARC AIR at Mohammed VI
               Polytechnic University (UM6P), Benguerir, Morocco.
             </p>
           </div>
@@ -505,7 +502,7 @@ export default function HomePage({
           </div>
 
           <div className="space-y-3">
-            <h4 className="font-semibold text-foreground">ARC_Air</h4>
+            <h4 className="font-semibold text-foreground">ARC AIR</h4>
             <p className="text-sm text-muted-foreground leading-relaxed">
               UM6P, Benguerir, Morocco
               <br />
@@ -523,7 +520,7 @@ export default function HomePage({
         <div className="border-t border-border">
           <div className="max-w-5xl mx-auto px-6 py-5 text-center md:flex md:items-center md:justify-between md:text-left gap-4 text-sm text-muted-foreground">
             <span>
-              © 2026 Africa Database • ARC_Air, UM6P. All rights reserved.
+              © 2026 Africa Database • ARC AIR, UM6P. All rights reserved.
             </span>
             <span>Built for open air quality research in Africa.</span>
           </div>
@@ -609,7 +606,7 @@ function TeamCard({
         onError={(event) => {
           event.currentTarget.src = createTeamPlaceholder(name);
         }}
-        className="h-24 w-24 rounded-full object-cover border border-border shadow-sm"
+        className="h-40 w-40 rounded-full object-cover border border-border shadow-sm"
       />
       <h3 className="text-lg font-semibold text-foreground">{name}</h3>
       <p className="text-sm text-muted-foreground leading-relaxed">{role}</p>
@@ -868,10 +865,7 @@ function AfricaMapPreview({
 
   if (isStaticBackground) {
     return (
-      <svg
-        viewBox={VIEW_BOX}
-        className="w-full h-auto max-w-150 opacity-10"
-      >
+      <svg viewBox={VIEW_BOX} className="w-full h-auto max-w-150 opacity-10">
         {paths.map((p) => (
           <path
             key={p.id}

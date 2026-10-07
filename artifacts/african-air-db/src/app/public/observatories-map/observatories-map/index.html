@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Observatories &amp; Networks Map</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Figtree:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="css/styles.css">
+<style>/* minimal reset used by the prototype */ *{box-sizing:border-box} body{margin:0} img{max-width:100%} [hidden]{display:none!important}</style>
+</head>
+<body>
+
+<header class="site">
+  <div class="wrap">
+    <div class="brand">
+      <svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true"><circle cx="13" cy="13" r="11" fill="none" stroke="currentColor" stroke-width="2"/><path d="M5 15c3-3 5 2 8-1s5 1 8-2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      Africa Air Quality Data Review
+    </div>
+    <nav class="nav" aria-label="Main">
+      <a href="#">Home</a><a href="#">Datasets</a><a href="#" aria-current="page">Observatories &amp; networks</a><a href="#">Field campaigns</a><a href="#">Publications</a><a href="#">About</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="intro">
+    <div>
+      <div class="crumbs"><a href="#">Home</a> / Observatories &amp; networks</div>
+      <h1>Observatories, monitoring networks and field campaigns in Africa</h1>
+      <p>Find the ground stations that have measured the atmosphere across Africa and its islands. Select a station on the map to see an overview, then open its full record below the map.</p>
+    </div>
+    <div class="stats" id="stats"></div>
+  </section>
+
+  <div class="bar" role="group" aria-label="Map filters">
+    <div class="nets" id="nets" role="group" aria-label="Networks"></div>
+    <div class="seg" role="group" aria-label="Status">
+      <button type="button" id="st-all" data-s="all" aria-pressed="true">All</button>
+      <button type="button" id="st-act" data-s="Active" aria-pressed="false">Active</button>
+      <button type="button" id="st-ina" data-s="Inactive" aria-pressed="false">Inactive</button>
+    </div>
+    <select id="country" aria-label="Country or territory"><option value="">All countries &amp; territories</option></select>
+    <input type="search" id="q" placeholder="Search station or city" aria-label="Search station or city">
+    <span class="count" id="count"></span>
+  </div>
+  <div class="mapbox" id="mapbox">
+    <svg id="map" role="img" aria-label="Map of air quality monitoring stations and field campaign sites in Africa"></svg>
+    <div class="zoom"><button type="button" id="zin" aria-label="Zoom in">+</button><button type="button" id="zout" aria-label="Zoom out">−</button><button type="button" id="zreset" aria-label="Reset view" style="font-size:14px">⤢</button></div>
+    <div class="legend" id="legend"></div>
+    <div class="hint">Scroll or pinch to zoom · drag to pan</div>
+  </div>
+
+  <article class="detail" id="station-details" tabindex="-1" aria-live="polite"></article>
+
+  <section class="index" id="index">
+    <div class="hd"><h2>Station index</h2><span class="eyebrow" id="index-count"></span></div>
+    <div class="tablebox">
+      <table>
+        <thead><tr>
+          <th data-k="id" scope="col">Station</th><th data-k="net" scope="col">Network</th><th data-k="city" scope="col">City / location</th><th data-k="country" scope="col">Country / territory</th><th data-k="status" scope="col">Status</th><th data-k="start" scope="col">Data period</th><th data-k="lat" scope="col">Lat, Lon</th>
+        </tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+  </section>
+</main>
+<footer><div class="wrap">Sources: AERONET (NASA GSFC), INDAAF, SAFARI 2000 (NASA), NDACC and SHADOZ station lists. AERONET coordinates from the AERONET site list; SAFARI 2000 and SHADOZ positions approximate. Boundaries simplified from Natural Earth.</div></footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script src="js/map.js"></script>
+</body>
+</html>
