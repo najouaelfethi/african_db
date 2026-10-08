@@ -205,6 +205,7 @@ function ResultCard({ study, index, pollutantDict, onOpen }: { study: Study; ind
 
 export default function SearchPage({ onOpenStudy }: { onOpenStudy?: (id: string) => void } = {}) {
   const [filters, setFilters] = useState<Filters>(emptyFilters());
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [sortBy, setSortBy] = useState<"yearDesc" | "yearAsc" | "relevance" | "titleAsc" | "countryAsc">("relevance");
   const [page, setPage] = useState(1);
   const [isExporting, setIsExporting] = useState(false);
@@ -344,10 +345,19 @@ export default function SearchPage({ onOpenStudy }: { onOpenStudy?: (id: string)
   const totalActive = activeTags.length;
 
   return (
-    <div className="flex h-full w-full overflow-hidden bg-background" style={{ fontFamily: "'Inter', sans-serif" }}>
+    <div className="relative flex h-full w-full min-w-0 overflow-hidden bg-background" style={{ fontFamily: "'Inter', sans-serif" }}>
+
+      {showMobileFilters && (
+        <button
+          type="button"
+          aria-label="Close filters"
+          onClick={() => setShowMobileFilters(false)}
+          className="fixed inset-x-0 top-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-55 bg-black/35 lg:hidden"
+        />
+      )}
 
       {/* ── FILTER SIDEBAR ── */}
-      <aside className="w-72 shrink-0 flex flex-col bg-card border-r border-border overflow-hidden">
+      <aside className={`fixed left-0 top-0 z-60 flex h-[calc(100dvh-3.5rem-env(safe-area-inset-bottom))] w-[min(18rem,88vw)] flex-col overflow-hidden border-r border-border bg-card transition-transform duration-200 ${showMobileFilters ? "translate-x-0" : "-translate-x-full"} lg:static lg:z-auto lg:h-full lg:w-72 lg:translate-x-0`}>
 
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3.5 border-b border-border bg-card">
@@ -366,6 +376,14 @@ export default function SearchPage({ onOpenStudy }: { onOpenStudy?: (id: string)
           >
             <RotateCcw size={11} />
             Reset
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowMobileFilters(false)}
+            aria-label="Close filters"
+            className="flex h-8 w-8 items-center justify-center rounded text-muted-foreground hover:bg-muted/60 hover:text-foreground lg:hidden"
+          >
+            <X size={16} />
           </button>
         </div>
 
@@ -463,8 +481,8 @@ export default function SearchPage({ onOpenStudy }: { onOpenStudy?: (id: string)
       <div className="flex-1 flex flex-col overflow-hidden">
 
         {/* Search bar row */}
-        <div className="shrink-0 bg-card border-b border-border px-5 py-3 flex items-center gap-3">
-          <div className="relative flex-1">
+        <div className="shrink-0 bg-card border-b border-border px-3 py-2 flex flex-wrap items-center gap-2 sm:px-5 sm:py-3 sm:gap-3">
+          <div className="relative order-1 min-w-0 w-full sm:order-0 sm:flex-1">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <input
               type="text"
@@ -480,8 +498,23 @@ export default function SearchPage({ onOpenStudy }: { onOpenStudy?: (id: string)
             )}
           </div>
 
+          <button
+            type="button"
+            onClick={() => setShowMobileFilters(true)}
+            aria-expanded={showMobileFilters}
+            className="order-2 inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded border border-border px-2.5 text-xs text-foreground hover:bg-muted/50 lg:hidden"
+          >
+            <SlidersHorizontal size={13} />
+            Filters
+            {totalActive > 0 && (
+              <span className="rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold text-primary-foreground">
+                {totalActive}
+              </span>
+            )}
+          </button>
+
           {/* Sort */}
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="order-3 flex items-center gap-2 shrink-0">
             <ArrowUpDown size={13} className="text-muted-foreground" />
             <select
               value={sortBy}
@@ -496,7 +529,7 @@ export default function SearchPage({ onOpenStudy }: { onOpenStudy?: (id: string)
             </select>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="order-4 flex items-center gap-2 shrink-0">
             {exportMessage && (
               <span
                 className={exportError ? "text-[11px] text-destructive" : "sr-only"}

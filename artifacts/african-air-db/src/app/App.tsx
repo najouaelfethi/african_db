@@ -1255,12 +1255,12 @@ export default function App() {
 
   return (
     <div
-      className="flex h-screen w-full overflow-hidden bg-background"
+      className="flex h-dvh min-h-svh w-full flex-col overflow-hidden bg-background xl:flex-row"
       style={{ fontFamily: "'Inter', sans-serif" }}
     >
       {/* SIDEBAR: hidden on admin/login pages which have their own chrome */}
       <aside
-        className={`sidebar flex flex-col w-56 min-w-56 text-white z-20 shrink-0 ${page === "admin" || page === "login" ? "hidden" : ""}`}
+        className={`sidebar w-56 min-w-56 shrink-0 flex-col text-white z-20 ${page === "admin" || page === "login" ? "hidden" : "hidden xl:flex"}`}
       >
         {/* ── Brand header ── */}
         <div className="px-4 pt-5 pb-4">
@@ -1362,7 +1362,39 @@ export default function App() {
         <div className="flex-1" />
       </aside>
 
+      {page !== "admin" && page !== "login" && (
+        <nav className="fixed inset-x-0 bottom-0 z-50 grid grid-cols-5 border-t border-border bg-white/95 px-1 pt-1 pb-[env(safe-area-inset-bottom)] shadow-sm backdrop-blur xl:hidden" aria-label="Primary navigation">
+          {NAV.map(({ id, icon: Icon, label }) => {
+            const isActive =
+              page === id || (id === "map" && page === "details");
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() => navigateToPage(id)}
+                aria-current={isActive ? "page" : undefined}
+                className={`flex min-w-0 min-h-12 flex-col items-center justify-center gap-1 rounded-md px-0.5 py-1.5 text-[10px] leading-none transition-colors ${
+                  isActive
+                    ? "text-primary"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Icon size={18} aria-hidden="true" />
+                <span className="max-w-full truncate">{label}</span>
+              </button>
+            );
+          })}
+        </nav>
+      )}
+
       {/* ── CONTENT ── */}
+      <main
+        className={`flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden ${
+          page === "admin" || page === "login"
+            ? ""
+            : "pb-[calc(3.5rem+env(safe-area-inset-bottom))] xl:pb-0"
+        }`}
+      >
       {page === "home" ? (
         <HomePage
           stats={stats}
@@ -1471,7 +1503,7 @@ export default function App() {
           userEmail={adminUsername || ADMIN_AUTH.username}
         />
       ) : (
-        <div className="flex flex-col flex-1 overflow-hidden">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           {/* Research category tabs and their filters */}
           <nav
             aria-label="Research categories and filters"
@@ -1627,9 +1659,9 @@ export default function App() {
           </nav>
 
           {/* Map + right panel */}
-          <div className="flex flex-1 overflow-hidden">
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto xl:flex-row xl:overflow-hidden">
             {/* Map or placeholder cards */}
-            <div className="relative flex-1 overflow-hidden bg-[#F7F9FC]">
+            <div className="relative min-h-[42dvh] shrink-0 overflow-hidden bg-[#F7F9FC] xl:min-h-0 xl:flex-1 xl:shrink">
               {isCardOnlyResearchTab ? (
                 TABS[activeTab]?.label === "Campaigns" ? (
                   <div className="h-full w-full bg-white">
@@ -1871,7 +1903,7 @@ export default function App() {
             </div>
 
             {!isCardOnlyResearchTab && (
-              <div className="w-80 flex flex-col bg-white border-l border-border overflow-hidden shrink-0">
+              <div className="flex w-full min-h-[35dvh] max-h-[45dvh] shrink-0 flex-col overflow-hidden border-t border-border bg-white xl:min-h-0 xl:max-h-none xl:w-80 xl:border-l xl:border-t-0">
                 <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-border">
                   <div className="flex items-center gap-2">
                     <CountryFlag country={selectedCountryName} />
@@ -2169,6 +2201,7 @@ export default function App() {
           </div>
         </div>
       )}
+      </main>
     </div>
   );
 }
