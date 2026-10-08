@@ -2,6 +2,7 @@
  * AdminDashboard: complete admin interface for the African Air Database.
  * Tabs: Dashboard · Research Data · Data Management · Analytics · Users · Settings
  */
+import * as React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AreaChart,

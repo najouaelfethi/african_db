@@ -1,3 +1,4 @@
+import * as React from "react";
 import { useState } from "react";
 import { ArrowLeft, CheckCircle2, Mail, Send, ShieldCheck } from "lucide-react";
 import {
