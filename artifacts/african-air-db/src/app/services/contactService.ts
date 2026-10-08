@@ -1,3 +1,5 @@
+import { apiUrl } from "./apiUrl";
+
 export type ContactRequestStatus = "Pending" | "Valid" | "Disapproved";
 export type ContactRequestType =
   | "General inquiry"
@@ -42,7 +44,7 @@ async function parseJson<T>(response: Response): Promise<T> {
 export async function submitContactRequest(
   payload: ContactRequestPayload,
 ): Promise<ContactRequestRecord> {
-  const response = await fetch("/api/v1/contact-requests", {
+  const response = await fetch(apiUrl("/api/v1/contact-requests"), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -54,7 +56,7 @@ export async function submitContactRequest(
 }
 
 export async function getContactRequests(): Promise<ContactRequestRecord[]> {
-  const response = await fetch("/api/v1/contact-requests", {
+  const response = await fetch(apiUrl("/api/v1/contact-requests"), {
     method: "GET",
     headers: {
       Accept: "application/json",
@@ -68,7 +70,7 @@ export async function updateContactRequestStatus(
   id: number,
   status: ContactRequestStatus,
 ): Promise<ContactRequestRecord> {
-  const response = await fetch(`/api/v1/contact-requests/${id}/status`, {
+  const response = await fetch(apiUrl(`/api/v1/contact-requests/${id}/status`), {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",

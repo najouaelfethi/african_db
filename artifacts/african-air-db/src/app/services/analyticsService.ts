@@ -1,3 +1,5 @@
+import { apiUrl } from "./apiUrl";
+
 export interface StudiesByYearRow {
   year: number;
   total_studies: number;
@@ -10,10 +12,8 @@ export interface PollutionVariableRow {
   percentage: number;
 }
 
-const ANALYTICS_BASE = "/api/v1/analytics";
-
 async function getAnalyticsResponse(path: string): Promise<unknown> {
-  const response = await fetch(`${ANALYTICS_BASE}/${path}`, {
+  const response = await fetch(apiUrl(`/api/v1/analytics/${path}`), {
     method: "GET",
     headers: { Accept: "application/json" },
   });

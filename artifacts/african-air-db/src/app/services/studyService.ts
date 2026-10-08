@@ -4,6 +4,7 @@ import {
   COUNTRY_NAME_ALIASES,
   COUNTRY_TOPO_ID,
 } from "../data/geo";
+import { apiUrl } from "./apiUrl";
 import type {
   ArcAirDataset,
   AreaSummary,
@@ -18,10 +19,8 @@ import type {
   StudyQuery,
 } from "../types/arcair";
 
-const PUBLIC_API_BASE = "/api/v1/public";
-
 async function fetchMapData() {
-  const response = await fetch(`${PUBLIC_API_BASE}/filters`);
+  const response = await fetch(apiUrl("/api/v1/public/filters"));
 
   if (!response.ok) {
     throw new Error(`Map API error: ${response.status}`);
@@ -192,7 +191,7 @@ export async function getPublicStatisticsCounts(): Promise<{
 }
 
 async function fetchPublicStatistics(): Promise<PublicApiStatistics> {
-  const response = await fetch(`${PUBLIC_API_BASE}/statistics`);
+  const response = await fetch(apiUrl("/api/v1/public/statistics"));
   if (!response.ok) {
     throw new Error(`Statistics API error: ${response.status}`);
   }
@@ -279,7 +278,7 @@ function isParticulateMatter(itemName: string): boolean {
 
 
 export async function getPollutants(): Promise<PollutantInfo[]> {
-  const response = await fetch(`${PUBLIC_API_BASE}/filters`);
+  const response = await fetch(apiUrl("/api/v1/public/filters"));
 
   if (!response.ok) {
     throw new Error(`Failed to fetch pollutants: ${response.status}`);
