@@ -1530,6 +1530,20 @@ export default function App() {
                   ))}
                 </div>
               </div>
+              {activeTab === 0 && (
+                <button
+                  type="button"
+                  aria-pressed={!hasUserChangedPollutants}
+                  onClick={selectAllCategories}
+                  className={`min-h-8 shrink-0 rounded border px-2 text-[11px] font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
+                    hasUserChangedPollutants
+                      ? "border-border bg-white text-muted-foreground hover:bg-muted/50"
+                      : "border-primary bg-primary text-white"
+                  }`}
+                >
+                  All categories
+                </button>
+              )}
             </div>
 
             {TABS[activeTab] && (
@@ -1543,11 +1557,11 @@ export default function App() {
                 {TABS[activeTab].source === "static" &&
                 (TABS[activeTab].subTabs?.length ?? 0) > 0 ? (
                   <>
-                    <div className="flex min-w-0 items-center gap-2 @container">
+                    <div className="min-w-0 @container">
                       <div
                         role="tablist"
                         aria-label={`${TABS[activeTab].label} subcategories`}
-                        className="flex min-w-0 flex-1 flex-nowrap items-center gap-1 overflow-x-auto"
+                        className="flex w-full flex-nowrap items-center gap-1"
                       >
                         {TABS[activeTab].subTabs?.map((subTab, idx) => (
                           <button
@@ -1586,18 +1600,6 @@ export default function App() {
                           </button>
                         ))}
                       </div>
-                      <button
-                        type="button"
-                        aria-pressed={!hasUserChangedPollutants}
-                        onClick={selectAllCategories}
-                        className={`min-h-8 shrink-0 rounded border px-2 text-[11px] font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
-                          hasUserChangedPollutants
-                            ? "border-border bg-white text-muted-foreground hover:bg-muted/50"
-                            : "border-primary bg-primary text-white"
-                        }`}
-                      >
-                        All categories
-                      </button>
                     </div>
 
                     {activeSubTab >= 0 && (
