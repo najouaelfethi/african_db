@@ -774,14 +774,12 @@ export default function App() {
   );
   const [hasUserChangedPollutants, setHasUserChangedPollutants] =
     useState(false);
-  const [activeSubTab, setActiveSubTab] = useState(0);
+  const [activeSubTab, setActiveSubTab] = useState(-1);
 
   // Initialize selected pollutants when tab changes
   useEffect(() => {
     if (TABS.length > 0 && TABS[activeTab]) {
       setSelectedPollutants(new Set(TABS[activeTab].keys));
-      setHasUserChangedPollutants(false);
-      setActiveSubTab(0);
     }
   }, [activeTab, TABS]);
 
@@ -790,6 +788,28 @@ export default function App() {
     setSelectedPollutants((prev) =>
       updateSelectedMeasures(prev, [{ key }], !prev.has(key)),
     );
+  };
+
+  const selectResearchTab = (index: number) => {
+    const tab = TABS[index];
+    if (!tab) return;
+    setActiveTab(index);
+    setActiveSubTab(0);
+    setSelectedPollutants(new Set(tab.keys));
+    setHasUserChangedPollutants(true);
+  };
+
+  const selectResearchSubTab = (index: number) => {
+    const items = TABS[activeTab]?.subTabs?.[index]?.items ?? [];
+    setActiveSubTab(index);
+    setSelectedPollutants(new Set(items.map((item) => item.key)));
+    setHasUserChangedPollutants(true);
+  };
+
+  const selectAllCategories = () => {
+    setActiveSubTab(-1);
+    setSelectedPollutants(new Set(TABS.flatMap((tab) => tab.keys)));
+    setHasUserChangedPollutants(false);
   };
 
   const activeMeasureItems =
@@ -1493,46 +1513,71 @@ export default function App() {
             aria-label="Research categories and filters"
             className="z-10 shrink-0 border-b border-border bg-white"
           >
-            <div className="overflow-x-auto overscroll-x-contain">
-              <div
-                role="tablist"
-                aria-label="Research categories"
-                className="flex w-max min-w-full flex-nowrap px-2 sm:px-3"
-              >
-                {TABS.map((tab, i) => (
-                  <button
-                    key={tab.label}
-                    id={`research-category-tab-${i}`}
-                    type="button"
-                    role="tab"
-                    aria-selected={activeTab === i}
-                    aria-controls="research-category-panel"
-                    tabIndex={activeTab === i ? 0 : -1}
-                    onClick={() => setActiveTab(i)}
-                    onKeyDown={(event) =>
-                      handleTabKeyDown(event, i, TABS.length, setActiveTab)
-                    }
-                    className={`relative flex min-h-11 shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 px-4 py-3 text-xs font-medium transition-colors focus-visible:z-10 focus-visible:outline2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary
-                      ${
-                        activeTab === i
-                          ? "border-primary bg-primary/4 text-primary"
-                          : "border-transparent text-muted-foreground hover:bg-muted/50 hover:text-foreground"
-                      }`}
-                  >
-                    <span className="flex items-baseline gap-0.5">
-                      {tab.label}
-                      {tab.unit && (
-                        <span
-                          className="text-[9px] font-normal opacity-50"
-                          dangerouslySetInnerHTML={{
-                            __html: `(${unitToHtml(tab.unit)})`,
-                          }}
-                        />
-                      )}
-                    </span>
-                  </button>
-                ))}
+            <div className="flex items-center justify-between gap-2 px-2 sm:px-3">
+              <div className="min-w-0 flex-1 overflow-x-auto overscroll-x-contain">
+                <div
+                  role="tablist"
+                  aria-label="Research categories"
+                  className="flex w-max min-w-full flex-nowrap"
+                >
+                  {TABS.map((tab, i) => (
+                    <button
+                      key={tab.label}
+                      id={`research-category-tab-${i}`}
+                      type="button"
+                      role="tab"
+                      aria-selected={activeTab === i}
+                      aria-controls={
+                        activeTab === i ? "research-category-panel" : undefined
+                      }
+                      tabIndex={
+                        activeTab === i || (activeTab === -1 && i === 0)
+                          ? 0
+                          : -1
+                      }
+                      onClick={() => selectResearchTab(i)}
+                      onKeyDown={(event) =>
+                        handleTabKeyDown(
+                          event,
+                          i,
+                          TABS.length,
+                          selectResearchTab,
+                        )
+                      }
+                      className={`relative flex min-h-11 shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 px-4 py-3 text-xs font-medium transition-colors focus-visible:z-10 focus-visible:outline2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary
+                        ${
+                          activeTab === i
+                            ? "border-primary bg-primary/4 text-primary"
+                            : "border-transparent text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                        }`}
+                    >
+                      <span className="flex items-baseline gap-0.5">
+                        {tab.label}
+                        {tab.unit && (
+                          <span
+                            className="text-[9px] font-normal opacity-50"
+                            dangerouslySetInnerHTML={{
+                              __html: `(${unitToHtml(tab.unit)})`,
+                            }}
+                          />
+                        )}
+                      </span>
+                    </button>
+                  ))}
+                </div>
               </div>
+              <button
+                type="button"
+                aria-pressed={!hasUserChangedPollutants}
+                onClick={selectAllCategories}
+                className={`min-h-8 shrink-0 rounded border px-2 text-[11px] font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
+                  hasUserChangedPollutants
+                    ? "border-border bg-white text-muted-foreground hover:bg-muted/50"
+                    : "border-primary bg-primary text-white"
+                }`}
+              >
+                All categories
+              </button>
             </div>
 
             {TABS[activeTab] && (
@@ -1541,7 +1586,7 @@ export default function App() {
                 role="tabpanel"
                 aria-labelledby={`research-category-tab-${activeTab}`}
                 tabIndex={0}
-                className="border-t border-border/60 bg-[#F5F8FF] px-3 py-1.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-primary sm:px-4"
+                className="border-t border-border/60 bg-[#F5F8FF] px-3 py-1.5 focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-primary sm:px-4"
               >
                 {TABS[activeTab].source === "static" &&
                 (TABS[activeTab].subTabs?.length ?? 0) > 0 ? (
@@ -1559,18 +1604,27 @@ export default function App() {
                             type="button"
                             role="tab"
                             aria-selected={activeSubTab === idx}
-                            aria-controls="research-subcategory-panel"
-                            tabIndex={activeSubTab === idx ? 0 : -1}
-                            onClick={() => setActiveSubTab(idx)}
+                            aria-controls={
+                              activeSubTab >= 0
+                                ? "research-subcategory-panel"
+                                : undefined
+                            }
+                            tabIndex={
+                              activeSubTab === idx ||
+                              (activeSubTab < 0 && idx === 0)
+                                ? 0
+                                : -1
+                            }
+                            onClick={() => selectResearchSubTab(idx)}
                             onKeyDown={(event) =>
                               handleTabKeyDown(
                                 event,
                                 idx,
                                 TABS[activeTab].subTabs?.length ?? 0,
-                                setActiveSubTab,
+                                selectResearchSubTab,
                               )
                             }
-                            className={`min-h-8 shrink-0 whitespace-nowrap rounded-md border px-0.5 py-1 text-[clamp(9px,1.2cqw,14px)] font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
+                            className={`min-h-8 shrink-0 whitespace-nowrap rounded-md border px-0.5 py-1 text-[clamp(9px,1.2cqw,14px)] font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
                               activeSubTab === idx
                                 ? "border-primary bg-primary text-white shadow-sm"
                                 : "border-slate-300/70 bg-white/55 text-slate-700 hover:border-primary/25 hover:bg-white hover:text-foreground"
@@ -1582,20 +1636,22 @@ export default function App() {
                       </div>
                     </div>
 
-                    <div
-                      id="research-subcategory-panel"
-                      role="tabpanel"
-                      aria-labelledby={`research-subcategory-tab-${activeSubTab}`}
-                      tabIndex={0}
-                      className="mt-1.5 border-t border-border/60 pt-1.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-primary"
-                    >
-                      <MeasureFilterControls
-                        items={activeMeasureItems}
-                        selectedPollutants={selectedPollutants}
-                        setSelectedPollutants={setSelectedPollutants}
-                        onUserChange={() => setHasUserChangedPollutants(true)}
-                      />
-                    </div>
+                    {activeSubTab >= 0 && (
+                      <div
+                        id="research-subcategory-panel"
+                        role="tabpanel"
+                        aria-labelledby={`research-subcategory-tab-${activeSubTab}`}
+                        tabIndex={0}
+                        className="mt-1.5 border-t border-border/60 pt-1.5 focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-primary"
+                      >
+                        <MeasureFilterControls
+                          items={activeMeasureItems}
+                          selectedPollutants={selectedPollutants}
+                          setSelectedPollutants={setSelectedPollutants}
+                          onUserChange={() => setHasUserChangedPollutants(true)}
+                        />
+                      </div>
+                    )}
                   </>
                 ) : TABS[activeTab].items &&
                   TABS[activeTab].items.length > 0 ? (

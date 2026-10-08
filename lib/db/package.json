@@ -12,14 +12,16 @@
     "push-force": "drizzle-kit push --force --config ./drizzle.config.ts"
   },
   "dependencies": {
+    "@tailwindcss/typography": "0.5.4",
     "drizzle-orm": "^0.45.2",
     "drizzle-zod": "^0.8.3",
+    "nodemailer": "10.0.16",
     "pg": "^8.22.0",
     "zod": "^3.25.76"
   },
   "devDependencies": {
     "@types/node": "^25.3.3",
     "@types/pg": "^8.20.0",
-    "drizzle-kit": "^0.31.10"
+    "drizzle-kit": "^0.18.1"
   }
 }

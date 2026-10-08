@@ -1393,7 +1393,7 @@ function ContactRequestsTab() {
                   )}
                 </div>
 
-                <div className="flex flex-col gap-2 min-w-[170px]">
+                <div className="flex flex-col gap-2 min-w-42.5">
                   <button
                     onClick={() => handleStatusUpdate(request.id, "Valid")}
                     className="rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700 transition"

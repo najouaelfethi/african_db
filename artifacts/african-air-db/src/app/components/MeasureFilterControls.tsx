@@ -34,9 +34,8 @@ export function getSelectedPollutantKeysForMap(
   availableKeys: readonly string[],
   hasUserChanged: boolean,
 ): string[] | undefined {
-  if (!hasUserChanged || selected.size >= availableKeys.length)
-    return undefined;
-  return Array.from(selected);
+  if (!hasUserChanged) return undefined;
+  return Array.from(selected).filter((key) => availableKeys.includes(key));
 }
 
 interface MeasureFilterControlsProps {
@@ -84,7 +83,7 @@ export default function MeasureFilterControls({
             type="button"
             onClick={() => setActiveSelection(true)}
             disabled={items.length === 0 || allSelected}
-            className="rounded px-2 py-1 text-[11px] font-medium text-primary transition-colors hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary disabled:cursor-not-allowed disabled:text-muted-foreground/50 disabled:hover:bg-transparent"
+            className="rounded px-2 py-1 text-[11px] font-medium text-primary transition-colors hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary disabled:cursor-not-allowed disabled:text-muted-foreground/50 disabled:hover:bg-transparent"
           >
             Select all
           </button>
@@ -95,7 +94,7 @@ export default function MeasureFilterControls({
             type="button"
             onClick={() => setActiveSelection(false)}
             disabled={selectedCount === 0}
-            className="rounded px-2 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-white hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary disabled:cursor-not-allowed disabled:text-muted-foreground/50 disabled:hover:bg-transparent"
+            className="rounded px-2 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-white hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary disabled:cursor-not-allowed disabled:text-muted-foreground/50 disabled:hover:bg-transparent"
           >
             Clear
           </button>

@@ -40,9 +40,8 @@ export default defineConfig({
     allowedHosts: true,
     proxy: {
       "/api": {
-        target: "https://84.8.216.210",
+        target: "https://arcairedbapp.ddns.net/",
         changeOrigin: true,
-        secure: false,
       },
     },
     fs: {

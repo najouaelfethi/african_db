@@ -61,6 +61,26 @@ function MeasureFilterHarness({
 }
 
 describe("measure filter controls", () => {
+  it("keeps an explicitly selected full category as a map filter", () => {
+    expect(
+      getSelectedPollutantKeysForMap(
+        new Set(allMeasureKeys),
+        allMeasureKeys,
+        true,
+      ),
+    ).toEqual(allMeasureKeys);
+  });
+
+  it("leaves the initial category selection unfiltered", () => {
+    expect(
+      getSelectedPollutantKeysForMap(
+        new Set(allMeasureKeys),
+        allMeasureKeys,
+        false,
+      ),
+    ).toBeUndefined();
+  });
+
   it("selects every visible measure, updates the count, and passes those keys to the map", () => {
     render(<MeasureFilterHarness initialSelection={["pm25"]} />);
 
