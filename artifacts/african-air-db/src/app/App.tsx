@@ -751,18 +751,6 @@ export default function App() {
         items: [],
         keys: [],
       },
-      {
-        label: "Modeling & Remote Sensing",
-        source: "static",
-        unit: "",
-        items: [
-          { name: "AOD retrieval", key: "model-aod" },
-          { name: "Satellite estimates", key: "model-satellite" },
-          { name: "Chemical transport", key: "model-ctm" },
-          { name: "Emission inventories", key: "model-emissions" },
-        ],
-        keys: ["model-aod", "model-satellite", "model-ctm", "model-emissions"],
-      },
     ];
   }, [categoriesData]);
 
@@ -782,13 +770,6 @@ export default function App() {
       setSelectedPollutants(new Set(TABS[activeTab].keys));
     }
   }, [activeTab, TABS]);
-
-  const togglePollutant = (key: string) => {
-    setHasUserChangedPollutants(true);
-    setSelectedPollutants((prev) =>
-      updateSelectedMeasures(prev, [{ key }], !prev.has(key)),
-    );
-  };
 
   const selectResearchTab = (index: number) => {
     const tab = TABS[index];
@@ -987,8 +968,7 @@ export default function App() {
   }, [selectedCountryId]);
 
   const isCardOnlyResearchTab =
-    TABS[activeTab]?.label === "Campaigns" ||
-    TABS[activeTab]?.label === "Modeling & Remote Sensing";
+    TABS[activeTab]?.label === "Campaigns";
 
   const shouldRenderMap = page === "map" && !isCardOnlyResearchTab;
 
@@ -1268,24 +1248,6 @@ export default function App() {
             body: "High-frequency observations for particulate matter, NOx, and VOCs during coastal flows.",
           },
         ];
-      case "Modeling & Remote Sensing":
-        return [
-          {
-            title: "Satellite AOD Retrieval",
-            meta: "MODIS + Sentinel-3",
-            body: "Regional aerosol optical depth inversion and trend estimation over the Sahel and coastal Africa.",
-          },
-          {
-            title: "Chemical Transport Modelling",
-            meta: "WRF-Chem · 10 km grid",
-            body: "Source attribution for dust, biomass burning, and urban emissions under seasonal forecast scenarios.",
-          },
-          {
-            title: "Emission Inventory Fusion",
-            meta: "Road + industry + biomass",
-            body: "Merged activity data to compare emissions intensities across North, West, and East Africa.",
-          },
-        ];
       default:
         return [];
     }
@@ -1495,8 +1457,10 @@ export default function App() {
 
             <div className="mt-5 rounded-2xl bg-muted/40 px-4 py-3 text-[11px] text-muted-foreground space-y-1">
               <div>
+                {/* UM6P branding 
                 <span className="font-semibold text-foreground">Admin:</span>{" "}
                 <code>admin</code> · <code>admin123</code>
+                */}
               </div>
             </div>
           </div>
@@ -1566,18 +1530,6 @@ export default function App() {
                   ))}
                 </div>
               </div>
-              <button
-                type="button"
-                aria-pressed={!hasUserChangedPollutants}
-                onClick={selectAllCategories}
-                className={`min-h-8 shrink-0 rounded border px-2 text-[11px] font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
-                  hasUserChangedPollutants
-                    ? "border-border bg-white text-muted-foreground hover:bg-muted/50"
-                    : "border-primary bg-primary text-white"
-                }`}
-              >
-                All categories
-              </button>
             </div>
 
             {TABS[activeTab] && (
@@ -1591,11 +1543,11 @@ export default function App() {
                 {TABS[activeTab].source === "static" &&
                 (TABS[activeTab].subTabs?.length ?? 0) > 0 ? (
                   <>
-                    <div className="min-w-0 @container">
+                    <div className="flex min-w-0 items-center gap-2 @container">
                       <div
                         role="tablist"
                         aria-label={`${TABS[activeTab].label} subcategories`}
-                        className="flex w-full flex-nowrap items-center gap-1"
+                        className="flex min-w-0 flex-1 flex-nowrap items-center gap-1 overflow-x-auto"
                       >
                         {TABS[activeTab].subTabs?.map((subTab, idx) => (
                           <button
@@ -1634,6 +1586,18 @@ export default function App() {
                           </button>
                         ))}
                       </div>
+                      <button
+                        type="button"
+                        aria-pressed={!hasUserChangedPollutants}
+                        onClick={selectAllCategories}
+                        className={`min-h-8 shrink-0 rounded border px-2 text-[11px] font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
+                          hasUserChangedPollutants
+                            ? "border-border bg-white text-muted-foreground hover:bg-muted/50"
+                            : "border-primary bg-primary text-white"
+                        }`}
+                      >
+                        All categories
+                      </button>
                     </div>
 
                     {activeSubTab >= 0 && (
@@ -1653,34 +1617,6 @@ export default function App() {
                       </div>
                     )}
                   </>
-                ) : TABS[activeTab].items &&
-                  TABS[activeTab].items.length > 0 ? (
-                  <div
-                    role="group"
-                    aria-label={`Options for ${TABS[activeTab].label}`}
-                    className="flex flex-wrap gap-x-5 gap-y-2"
-                  >
-                    {TABS[activeTab].items.map((item) => (
-                      <label
-                        key={String(item.key ?? item)}
-                        className="flex min-h-9 cursor-pointer items-center gap-2 py-1"
-                      >
-                        <input
-                          type="checkbox"
-                          className="h-4 w-4 accent-primary"
-                          checked={selectedPollutants.has(
-                            String(item.key ?? item),
-                          )}
-                          onChange={() =>
-                            togglePollutant(String(item.key ?? item))
-                          }
-                        />
-                        <span className="text-[11px] text-foreground/80">
-                          <Chem name={String(item.name ?? item)} />
-                        </span>
-                      </label>
-                    ))}
-                  </div>
                 ) : (
                   <p className="text-xs text-muted-foreground"></p>
                 )}
