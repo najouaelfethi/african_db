@@ -67,7 +67,7 @@ export default function MeasureFilterControls({
       <div className="mb-1.5 flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
           <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-            Available measures
+            Available measurements
           </span>
           <span
             role="status"
