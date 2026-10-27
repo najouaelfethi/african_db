@@ -8,8 +8,15 @@ export function useAsync<T>(fetchFn: () => Promise<T>, deps: any[] = []) {
   useEffect(() => {
     let active = true;
     setLoading(true);
+    setError(null);
     fetchFn()
-      .then(d => { if (active) { setData(d); setLoading(false); } })
+      .then(d => {
+        if (active) {
+          setData(d);
+          setError(null);
+          setLoading(false);
+        }
+      })
       .catch(e => { if (active) { setError(e); setLoading(false); } });
     return () => { active = false; };
   }, deps);

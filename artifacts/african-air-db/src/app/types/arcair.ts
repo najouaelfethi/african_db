@@ -7,6 +7,10 @@ export interface Measurement {
   sd: number | null;
   min: number | null;
   max: number | null;
+  /** API category key, e.g. "bulk_pm" or "trace_metals". */
+  category?: string | null;
+  /** API subcategory key, e.g. "alkanes" or "pah". */
+  subcategory?: string | null;
 }
 
 /** Catalog entry describing one measured pollutant / parameter column. */

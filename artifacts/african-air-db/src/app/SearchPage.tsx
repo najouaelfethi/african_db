@@ -587,7 +587,7 @@ export default function SearchPage({ onOpenStudy }: { onOpenStudy?: (id: string)
               <button onClick={resetAll} className="mt-2 text-xs text-primary hover:underline">Reset all filters</button>
             </div>
           ) : (
-            results.map((study, i) => <ResultCard key={study.id} study={study} index={i} pollutantDict={new Map(categoriesData?.flatMap(c => c.pollutants).map(p => [p.key, p.name]) || [])} onOpen={onOpenStudy} />)
+            results.map((study, i) => <ResultCard key={`${study.id}-${i}`} study={study} index={i} pollutantDict={new Map(categoriesData?.flatMap(c => c.pollutants).map(p => [p.key, p.name]) || [])} onOpen={onOpenStudy} />)
           )}
 
           {/* Pagination */}

@@ -30,13 +30,26 @@ async function fetchMapData() {
 }
 interface PublicApiMeasurement {
   id?: string;
+  variable_id?: string;
   item_name: string;
-  item_unit: string;
+  item_unit?: string;
   category?: string | null;
-  mean_value: number | null;
+  subcategory?: string | null;
+  mean_value?: number | null;
   sd_value?: number | null;
-  min_value: number | null;
-  max_value: number | null;
+  min_value?: number | null;
+  max_value?: number | null;
+}
+
+interface PublicApiMethodology {
+  id?: string;
+  methodology?: string;
+  study_area?: string;
+  description?: string;
+  sampling_period_raw?: string;
+  start_year?: number | null;
+  end_year?: number | null;
+  measurements?: string[];
 }
 
 interface PublicApiArticle {
@@ -50,26 +63,33 @@ interface PublicApiArticle {
 interface PublicApiStudy {
   id: string;
   title: string;
-  methodology: string;
-  start_year: number | null;
-  end_year: number | null;
-  site_description: string;
+  methodology?: string;
+  start_year?: number | null;
+  end_year?: number | null;
+  site_description?: string;
   source: string;
-  sampling_period_raw: string;
+  sampling_period_raw?: string;
 
   articles: PublicApiArticle[];
 
-  measurements: PublicApiMeasurement[];
+  measurements?: PublicApiMeasurement[] | null;
+  methodologies?: PublicApiMethodology[] | null;
 }
 function getStudyYears(study: PublicApiStudy): {
   yearFrom: number | null;
   yearTo: number | null;
 } {
-  // Extract years from the sampling period, not from the publication source.
-  const years = (study.sampling_period_raw ?? "").match(/\b(?:19|20)\d{2}\b/g);
+  const allYears = [
+    study.sampling_period_raw,
+    ...(study.methodologies ?? []).map((methodology) =>
+      methodology.sampling_period_raw ?? "",
+    ),
+  ]
+    .join(" ")
+    .match(/\b(?:19|20)\d{2}\b/g);
 
-  if (years && years.length > 0) {
-    const parsedYears = years.map(Number);
+  if (allYears && allYears.length > 0) {
+    const parsedYears = allYears.map(Number);
 
     return {
       yearFrom: Math.min(...parsedYears),
@@ -77,10 +97,22 @@ function getStudyYears(study: PublicApiStudy): {
     };
   }
 
-  // Fallback to API year fields if sampling_period_raw has no year.
+  const years = [
+    study.start_year,
+    study.end_year,
+    ...(study.methodologies ?? []).flatMap((methodology) => [
+      methodology.start_year,
+      methodology.end_year,
+    ]),
+  ].filter((year): year is number => typeof year === "number");
+
+  if (years.length > 0) {
+    return { yearFrom: Math.min(...years), yearTo: Math.max(...years) };
+  }
+
   return {
-    yearFrom: study.start_year,
-    yearTo: study.end_year,
+    yearFrom: null,
+    yearTo: null,
   };
 }
 
@@ -91,17 +123,34 @@ function getPublicationYear(source: string): number | null {
 
 function createMeasurements(
   measurements: PublicApiMeasurement[],
+  names: string[] = [],
 ): Record<string, Measurement> {
   const result: Record<string, Measurement> = {};
 
   for (const measurement of measurements) {
     result[measurement.item_name] = {
       raw:
-        measurement.mean_value !== null ? String(measurement.mean_value) : "",
-      mean: measurement.mean_value,
+        measurement.mean_value != null ? String(measurement.mean_value) : "",
+      mean: measurement.mean_value ?? null,
       sd: measurement.sd_value ?? null,
-      min: measurement.min_value,
-      max: measurement.max_value,
+      min: measurement.min_value ?? null,
+      max: measurement.max_value ?? null,
+      category:
+        measurement.category ?? inferredCategoryKey(measurement.item_name),
+      subcategory: measurement.subcategory ?? null,
+    };
+  }
+
+  for (const name of names) {
+    if (result[name]) continue;
+    result[name] = {
+      raw: "",
+      mean: null,
+      sd: null,
+      min: null,
+      max: null,
+      category: inferredCategoryKey(name),
+      subcategory: null,
     };
   }
 
@@ -111,14 +160,20 @@ function createMeasurements(
 function createStudyRecord(
   study: PublicApiStudy,
   studyArea: string,
+  methodology?: PublicApiMethodology,
 ): SamplingRecord {
+  const methodArea = methodology?.study_area ?? studyArea;
   return {
     id: 0,
-    studyArea,
-    methodology: study.methodology,
-    samplingPeriod: study.sampling_period_raw,
-    description: study.site_description,
-    measurements: createMeasurements(study.measurements),
+    studyArea: methodArea,
+    methodology: methodology?.methodology ?? study.methodology ?? "",
+    samplingPeriod:
+      methodology?.sampling_period_raw ?? study.sampling_period_raw ?? "",
+    description: methodology?.description ?? study.site_description ?? "",
+    measurements: createMeasurements(
+      getStudyMeasurements(study),
+      methodology?.measurements ?? [],
+    ),
   };
 }
 
@@ -138,6 +193,133 @@ interface PublicApiResponse {
   countries: PublicApiCountry[];
 }
 
+const API_CATEGORY_LABELS: Record<string, string> = {
+  bulk_pm: "Bulk PM",
+  carbonaceous: "Carbonaceous aerosols",
+  wsia: "Water soluble inorganic aerosols",
+  trace_metals: "Trace metals",
+  organic: "Organic pollutants",
+  gas: "Atmospheric Gases",
+};
+
+function normalizeMeasurementName(itemName: string): string {
+  const corruptedSumSymbol = String.fromCharCode(0x00e2, 0x0088, 0x0091);
+  return itemName.startsWith(corruptedSumSymbol)
+    ? `∑${itemName.slice(corruptedSumSymbol.length)}`
+    : itemName;
+}
+
+function getCategory(rawItemName: string): string {
+  const itemName = normalizeMeasurementName(rawItemName);
+  if (
+    ["PM10", "PM2.5", "PM1", "TSP", "Total Suspended Particles (TSP)"].includes(
+      itemName,
+    )
+  ) {
+    return "Bulk PM";
+  }
+  if (
+    ["BC", "OC", "Black carbon (BC)", "Organic carbon (OC)"].includes(
+      itemName,
+    )
+  ) {
+    return "Carbonaceous aerosols";
+  }
+  if (
+    [
+      "NO3-",
+      "SO42-",
+      "Cl-",
+      "F-",
+      "PO43-",
+      "Oxalate",
+      "Oxalate (C2O42-)",
+      "NH4+",
+      "K+",
+      "Na+",
+      "Fe2+/Fe3+",
+      "Mg2+",
+      "Ca2+",
+    ].includes(itemName)
+  ) {
+    return "Water soluble inorganic aerosols";
+  }
+  if (
+    [
+      "Na",
+      "Mg",
+      "Al",
+      "Si",
+      "P",
+      "Cl",
+      "K",
+      "Ca",
+      "Ti",
+      "V",
+      "Cr",
+      "Mn",
+      "Fe",
+      "Co",
+      "Ni",
+      "Cu",
+      "Zn",
+      "As",
+      "Se",
+      "Sr",
+      "Cd",
+      "Ba",
+      "Pb",
+    ].includes(itemName) ||
+    itemName.includes("Trace metals")
+  ) {
+    return "Trace metals";
+  }
+  if (
+    [
+      "∑Alkanes",
+      "∑PAHs",
+      "Naphthalene",
+      "Naphtalene",
+      "Acenaphthylene",
+      "Acenaphthene",
+      "Fluorene",
+      "Phenanthrene",
+      "Anthracene",
+      "Fluoranthene",
+      "Pyrene",
+      "Benzo[a]anthracene",
+      "Benzo[a]pyrene",
+      "Benzo[e]pyrene",
+      "Benzo[b]fluoranthene",
+      "Benzo[k]fluoranthene",
+      "Benzo[ghi]perylene",
+      "Chrysene",
+      "Dibenzo[a,h]anthracene",
+      "Indeno[1,2,3-cd]pyrene",
+      "∑PCBs",
+      "∑OCPs",
+      "VOCs",
+    ].includes(itemName) ||
+    ["Alkanes", "PAHs", "PCBs", "OCPs"].some((name) =>
+      itemName.includes(name),
+    )
+  ) {
+    return "Organic pollutants";
+  }
+  if (["NO2", "NO", "SO2", "CH4", "NMHC", "NH3", "O3", "CO"].includes(itemName)) {
+    return "Atmospheric Gases";
+  }
+  return "Other";
+}
+
+function inferredCategoryKey(itemName: string): string | null {
+  const category = getCategory(itemName);
+  return (
+    Object.entries(API_CATEGORY_LABELS).find(([, label]) => label === category)?.[0] ??
+    null
+  );
+}
+
 interface PublicApiStatistics {
   total_measurements?: unknown;
   total_variables?: unknown;
@@ -151,6 +333,32 @@ async function getPublicMapData(): Promise<PublicApiResponse> {
   return fetchMapData();
 }
 
+function getStudyMeasurements(
+  study: PublicApiStudy,
+): PublicApiMeasurement[] {
+  return Array.isArray(study.measurements) ? study.measurements : [];
+}
+
+function getStudyMeasurementNames(study: PublicApiStudy): string[] {
+  return [
+    ...getStudyMeasurements(study).map((measurement) => measurement.item_name),
+    ...(study.methodologies ?? []).flatMap(
+      (methodology) => methodology.measurements ?? [],
+    ),
+  ];
+}
+
+function getStudyRecords(
+  study: PublicApiStudy,
+  fallbackArea: string,
+): SamplingRecord[] {
+  const methodologies = study.methodologies ?? [];
+  return methodologies.length > 0
+    ? methodologies.map((methodology) =>
+        createStudyRecord(study, fallbackArea, methodology),
+      )
+    : [createStudyRecord(study, fallbackArea)];
+}
 export async function getPublicationYearRange(): Promise<{ min: number; max: number }> {
   const statistics = await fetchPublicStatistics();
   const { min, max } = statistics.year_range ?? {};
@@ -263,20 +471,6 @@ function countryCoordinates(country: string): [number, number] | null {
     centers.reduce((sum, center) => sum + center![1], 0) / centers.length,
   ];
 }
-function isParticulateMatter(itemName: string): boolean {
-  const name = itemName.trim().toUpperCase();
-
-  return (
-    name === "PM1" ||
-    name === "PM2.5" ||
-    name === "PM10" ||
-    name === "PM2.5-10" ||
-    name === "PM10-2.5" ||
-    name === "TSP(TOTAL SUSPENDED PARTICLES)"
-  );
-}
-
-
 export async function getPollutants(): Promise<PollutantInfo[]> {
   const response = await fetch(apiUrl("/api/v1/public/filters"));
 
@@ -288,15 +482,6 @@ export async function getPollutants(): Promise<PollutantInfo[]> {
 
   const pollutants = new Map<string, PollutantInfo>();
 
-  const categoryLabels: Record<string, string> = {
-    bulk_pm: "Bulk PM",
-    carbonaceous: "Carbonaceous aerosols",
-    wsia: "Water soluble inorganic aerosols",
-    trace_metals: "Trace metals",
-    organic: "Organic pollutants",
-    gas: "Atmospheric Gases",
-  };
-
   const pollutantDisplayNames: Record<string, string> = {
     TSP: "Total Suspended Particles (TSP)",
     BC: "Black carbon (BC)",
@@ -304,133 +489,31 @@ export async function getPollutants(): Promise<PollutantInfo[]> {
     CH4: "*CH4",
   };
 
-  // Use the API's category as the source of truth, with name-based fallback
-  // for older or incomplete API records.
-  const getCategory = (itemName: string): string => {
-    // Bulk particulate matter
-    if (["PM10", "PM2.5", "PM1", "TSP", "Total Suspended Particles (TSP)"].includes(itemName)) {
-      return "Bulk PM";
-    }
-
-    // Carbonaceous aerosols
-    if (
-      ["BC", "OC", "Black carbon (BC)", "Organic carbon (OC)"].includes(
-        itemName,
-      )
-    ) {
-      return "Carbonaceous aerosols";
-    }
-
-    // Water soluble inorganic aerosols
-    if (
-      [
-        "NO3-",
-        "SO42-",
-        "Cl-",
-        "F-",
-        "PO43-",
-        "Oxalate (C2O42-)",
-        "NH4+",
-        "K+",
-        "Na+",
-        "Fe2+/Fe3+",
-        "Mg2+",
-        "Ca2+",
-      ].includes(itemName)
-    ) {
-      return "Water soluble inorganic aerosols";
-    }
-
-    // Trace metals
-    if (
-      [
-        "∑Trace metals",
-        "Na",
-        "Mg",
-        "Al",
-        "Si",
-        "P",
-        "Cl",
-        "K",
-        "Ca",
-        "Ti",
-        "V",
-        "Cr",
-        "Mn",
-        "Fe",
-        "Co",
-        "Ni",
-        "Cu",
-        "Zn",
-        "As",
-        "Se",
-        "Sr",
-        "Cd",
-        "Ba",
-        "Pb",
-      ].includes(itemName)
-    ) {
-      return "Trace metals";
-    }
-
-    // Organic pollutants
-    if (
-      [
-        "∑Alkanes",
-        "∑PAHs",
-        "Naphtalene",
-        "Acenaphthylene",
-        "Acenaphthene",
-        "Fluorene",
-        "Phenanthrene",
-        "Anthracene",
-        "Fluoranthene",
-        "Pyrene",
-        "Benzo[a]anthracene",
-        "Benzo[a]pyrene",
-        "Benzo[e]pyrene",
-        "Benzo[b]fluoranthene",
-        "Benzo[k]fluoranthene",
-        "Benzo[ghi]perylene",
-        "Chrysene",
-        "Dibenzo[a,h]anthracene",
-        "Indeno[1,2,3-cd]pyrene",
-        "∑PCBs",
-        "∑OCPs",
-        "VOCs",
-      ].includes(itemName)
-    ) {
-      return "Organic pollutants";
-    }
-
-    // Atmospheric gases
-    if (
-      ["NO2", "NO", "SO2", "CH4", "NMHC", "NH3", "O3", "CO"].includes(itemName)
-    ) {
-      return "Atmospheric Gases";
-    }
-
-    // Keep unknown API variables visible instead of silently dropping them.
-    return "Other";
-  };
-
   for (const country of data.countries) {
     for (const city of country.cities) {
       for (const study of city.studies) {
-        for (const measurement of study.measurements) {
+        const measurementsByName = new Map(
+          getStudyMeasurements(study).map((measurement) => [
+            measurement.item_name,
+            measurement,
+          ]),
+        );
+        for (const itemName of getStudyMeasurementNames(study)) {
+          const measurement = measurementsByName.get(itemName);
           const category =
-            (measurement.category && categoryLabels[measurement.category]) ||
-            getCategory(measurement.item_name);
+            (measurement?.category &&
+              API_CATEGORY_LABELS[measurement.category]) ||
+            getCategory(itemName);
           const name =
-            pollutantDisplayNames[measurement.item_name] ?? measurement.item_name;
+            pollutantDisplayNames[normalizeMeasurementName(itemName)] ??
+            normalizeMeasurementName(itemName);
 
-          // Keep the API item_name as the key.
-          if (!pollutants.has(measurement.item_name)) {
-            pollutants.set(measurement.item_name, {
-              key: measurement.item_name,
+          if (!pollutants.has(itemName)) {
+            pollutants.set(itemName, {
+              key: itemName,
               name,
               category,
-              unit: measurement.item_unit,
+              unit: measurement?.item_unit ?? "",
             });
           }
         }
@@ -499,9 +582,9 @@ export async function getDatasetStats(): Promise<DatasetStats> {
         }
 
         // Count all unique measurement variables.
-        for (const measurement of study.measurements) {
-          pollutantNames.add(measurement.item_name);
-        }
+        getStudyMeasurementNames(study).forEach((name) =>
+          pollutantNames.add(name),
+        );
       }
     }
   }
@@ -538,8 +621,9 @@ export async function getSettings(): Promise<string[]> {
   for (const country of data.countries) {
     for (const city of country.cities) {
       for (const study of city.studies) {
-        if (study.site_description) {
-          settings.add(study.site_description);
+        if (study.site_description) settings.add(study.site_description);
+        for (const methodology of study.methodologies ?? []) {
+          if (methodology.description) settings.add(methodology.description);
         }
       }
     }
@@ -555,14 +639,8 @@ export async function getSettings(): Promise<string[]> {
 function studyPollutantKeys(study: Study): Set<string> {
   const keys = new Set<string>();
   for (const record of study.records) {
-    for (const [key, measurement] of Object.entries(record.measurements)) {
-      const hasReportedValue = [
-        measurement.mean,
-        measurement.min,
-        measurement.max,
-      ].some((value) => typeof value === "number" && Number.isFinite(value));
-
-      if (hasReportedValue) keys.add(key);
+    for (const key of Object.keys(record.measurements)) {
+      keys.add(key);
     }
   }
   return keys;
@@ -585,6 +663,15 @@ function matchesFilters(study: Study, filters: StudyFilters): boolean {
       ...study.records.map((r) => r.description),
       ...study.records.map((r) => r.methodology),
       ...keys,
+      ...study.records.flatMap((record) =>
+        Object.values(record.measurements).flatMap((measurement) => [
+          measurement.category ?? "",
+          measurement.category
+            ? API_CATEGORY_LABELS[measurement.category] ?? ""
+            : "",
+          measurement.subcategory ?? "",
+        ]),
+      ),
     ]
       .join(" \n ")
       .toLowerCase();
@@ -608,8 +695,24 @@ function matchesFilters(study: Study, filters: StudyFilters): boolean {
     }
   }
 
-  // Category filtering will be handled from the API measurement type.
-  // The old POLLUTANT_BY_KEY lookup is no longer used here.
+  if (filters.categories?.length) {
+    const categories = new Set(
+      study.records.flatMap((record) =>
+        Object.values(record.measurements).flatMap((measurement) => {
+            if (!measurement.category) return [];
+            return [
+              measurement.category,
+              API_CATEGORY_LABELS[measurement.category] ??
+                measurement.category,
+            ];
+          }),
+      ),
+    );
+
+    if (!filters.categories.some((category) => categories.has(category))) {
+      return false;
+    }
+  }
 
   if (filters.settings?.length) {
     const ok = filters.settings.some((setting) =>
@@ -707,7 +810,7 @@ export async function queryStudies(
           publicationYear: getPublicationYear(apiStudy.source),
           yearFrom,
           yearTo,
-          records: [createStudyRecord(apiStudy, city.study_area)],
+          records: getStudyRecords(apiStudy, city.study_area),
         });
       }
     }
@@ -738,6 +841,8 @@ export async function getStudyById(id: string): Promise<Study | undefined> {
       const study = city.studies.find((item) => item.id === id);
 
       if (study) {
+        const { yearFrom, yearTo } = getStudyYears(study);
+
         return {
           id: study.id,
           region: "",
@@ -748,9 +853,9 @@ export async function getStudyById(id: string): Promise<Study | undefined> {
           identifier: study.articles[0]?.identifier ?? "",
           title: study.title,
           dataProcessing: "",
-          yearFrom: study.start_year,
-          yearTo: study.end_year,
-          records: [createStudyRecord(study, city.study_area)],
+          yearFrom,
+          yearTo,
+          records: getStudyRecords(study, city.study_area),
         };
       }
     }
@@ -798,7 +903,7 @@ export async function getCountrySummaries(
           dataProcessing: "",
           yearFrom,
           yearTo,
-          records: [createStudyRecord(study, city.study_area)],
+          records: getStudyRecords(study, city.study_area),
         };
       });
       const matchingStudies = noPollutantsSelected

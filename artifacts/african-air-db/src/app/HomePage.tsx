@@ -815,7 +815,11 @@ function AfricaMapPreview({
 }: {
   static?: boolean;
 }) {
-  const { data: countriesData } = useAsync(() => getCountrySummaries());
+  const { data: countriesData, error } = useAsync(
+    () =>
+      isStaticBackground ? Promise.resolve([]) : getCountrySummaries(),
+    [isStaticBackground],
+  );
   const hasStudies = useMemo(
     () =>
       new Set(
@@ -888,6 +892,17 @@ function AfricaMapPreview({
           );
         })}
       </svg>
+    );
+  }
+
+  if (error) {
+    return (
+      <div
+        className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive"
+        role="alert"
+      >
+        Map coverage data could not be loaded: {error.message}
+      </div>
     );
   }
 

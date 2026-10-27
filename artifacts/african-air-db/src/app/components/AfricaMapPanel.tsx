@@ -295,7 +295,7 @@ export default function AfricaMapPanel({
 }: {
   filters?: StudyFilters;
 }) {
-  const { data: summaries, loading } = useAsync(
+  const { data: summaries, loading, error } = useAsync(
     () => getCountrySummaries(filters),
     [filters],
   );
@@ -379,7 +379,15 @@ export default function AfricaMapPanel({
   return (
     <div className="flex-1 flex overflow-hidden">
       {/* ── SVG MAP ── */}
-      <div className="flex-1 flex items-center justify-center bg-[#F7F9FC] p-4 overflow-hidden">
+      <div className="relative flex-1 flex items-center justify-center bg-[#F7F9FC] p-4 overflow-hidden">
+        {error && (
+          <div
+            className="absolute left-4 right-4 top-4 z-10 rounded-lg border border-destructive/30 bg-white/95 p-3 text-sm text-destructive shadow-sm"
+            role="alert"
+          >
+            Map data could not be loaded: {error.message}
+          </div>
+        )}
         {loading ? (
           <div className="w-full max-w-lg aspect-square bg-muted/30 rounded-xl animate-pulse" />
         ) : (
