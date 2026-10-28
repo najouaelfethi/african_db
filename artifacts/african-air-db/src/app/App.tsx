@@ -932,7 +932,7 @@ export default function App() {
     });
     return [...areasByCountryAndName.values()];
   }, [countrySummariesData]);
-  const africaCountries = useMemo(() => {
+  const africaCountrySummaries = useMemo(() => {
     const countriesByName = new Map<string, Map<string, Study>>();
     (countrySummariesData ?? []).forEach((country) => {
       const studies = countriesByName.get(country.name) ?? new Map<string, Study>();
@@ -990,7 +990,7 @@ export default function App() {
   const matchesStudySearch = (study: Study) =>
     !searchTerm ||
     `${study.title} ${study.author} ${study.source}`.toLowerCase().includes(searchTerm);
-  const visibleAfricaCountries = africaCountries.filter(
+  const visibleAfricaCountries = africaCountrySummaries.filter(
     (country) =>
       !searchTerm ||
       country.name.toLowerCase().includes(searchTerm) ||
@@ -1014,7 +1014,7 @@ export default function App() {
   const visibleCityStudies = selectedCityStudies.filter(matchesStudySearch);
   const maxCountryStudyCount = Math.max(
     1,
-    ...africaCountries.map((country) => country.studyCount),
+    ...africaCountrySummaries.map((country) => country.studyCount),
   );
   const maxCityStudyCount = Math.max(
     1,
@@ -1326,7 +1326,7 @@ export default function App() {
         }
 
         const bounds = L.latLngBounds(
-          ...cluster.cities.map((city) => toLatLng(city.coordinates)),
+          cluster.cities.map((city) => toLatLng(city.coordinates)),
         ).pad(0.15);
         map.flyToBounds(bounds, {
           duration: 0.7,
@@ -1363,7 +1363,10 @@ export default function App() {
       .find(
         (item) =>
           normalizeCountryId(
-            (item as L.GeoJSON).feature?.id as string | number | undefined,
+            (item as L.Layer & { feature?: GeoJSON.Feature }).feature?.id as
+              | string
+              | number
+              | undefined,
           ) === country.topoId,
       );
     if (!(countryLayer instanceof L.Polygon)) return;
@@ -2659,6 +2662,8 @@ export default function App() {
                               ))}
                             </div>
                           </>
+                        )}
+                      </>
                         )}
                       </div>
                     </>
