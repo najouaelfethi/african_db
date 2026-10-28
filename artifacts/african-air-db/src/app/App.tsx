@@ -16,6 +16,7 @@ import {
   ArrowLeft,
   ChevronDown,
   ChevronRight,
+  ExternalLink,
   Search,
   X,
   SlidersHorizontal,
@@ -1916,7 +1917,7 @@ export default function App() {
             {/* Map + right panel */}
             <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto xl:flex-row xl:overflow-hidden">
               {/* Map or placeholder cards */}
-              <div className="relative min-h-[42dvh] shrink-0 overflow-hidden bg-[#F7F9FC] xl:min-h-0 xl:flex-1 xl:shrink">
+              <div className="map-view-canvas relative min-h-[42dvh] shrink-0 overflow-hidden bg-[#F7F9FC] xl:min-h-0 xl:flex-1 xl:shrink">
                 <div
                   ref={mapContainerRef}
                   aria-hidden={isCardOnlyResearchTab}
@@ -2126,38 +2127,62 @@ export default function App() {
               </div>
 
               {!isCardOnlyResearchTab && (
-                <div className="flex w-full min-h-[35dvh] max-h-[45dvh] shrink-0 flex-col overflow-hidden border-t border-border bg-white xl:min-h-0 xl:max-h-none xl:w-80 xl:border-l xl:border-t-0">
-                  <div className="flex items-center gap-2 px-3 py-3 border-b border-border">
-                    {!isAfricaView && (
-                      <button
-                        type="button"
-                        onClick={focusAfrica}
-                        className="inline-flex h-7 shrink-0 items-center gap-1 rounded border border-border px-2 text-[10px] font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
-                        aria-label="Back to Africa"
-                      >
-                        <ArrowLeft size={12} />
-                        Africa
-                      </button>
-                    )}
+                <div className="map-selection-panel">
+                  <div className="map-selection-header">
+                    <div className="map-selection-overline">
+                      <span className="map-selection-indicator" />
+                      <span>
+                        {selectedMapStudy
+                          ? "Study record"
+                          : selectedCityName
+                            ? "City research"
+                            : isAfricaView
+                              ? "Continental overview"
+                              : "Country coverage"}
+                      </span>
+                      <span className="map-selection-context">
+                        {selectedMapStudy
+                          ? "FIELD METHODS"
+                          : selectedCityName
+                            ? "CITY LEVEL"
+                            : isAfricaView
+                              ? "AFRICA"
+                              : "COUNTRY LEVEL"}
+                      </span>
+                    </div>
+                    <h2 className="map-selection-title">
+                      {selectedMapStudy
+                        ? "Study details"
+                        : selectedCityName
+                          ? selectedCityName
+                          : isAfricaView
+                            ? "Air research across Africa"
+                            : selectedCountryName || "Country research"}
+                    </h2>
+                    <p className="map-selection-subtitle">
+                      {selectedMapStudy
+                        ? "Publication, sampling context and measured pollutants."
+                        : selectedCityName
+                          ? `${selectedCountryName} · studies recorded in this city`
+                          : isAfricaView
+                            ? "Explore field studies by country, then follow the evidence to a city or study."
+                            : "Study coverage and mapped research locations in this country."}
+                    </p>
                     <nav
                       aria-label="Map navigation"
-                      className="flex min-w-0 items-center gap-1 overflow-hidden text-xs"
+                      className="map-selection-breadcrumb"
                     >
                       <button
                         type="button"
                         onClick={focusAfrica}
-                        className={`shrink-0 font-semibold hover:text-primary ${
-                          isAfricaView ? "text-foreground" : "text-primary"
-                        }`}
+                        aria-current={isAfricaView ? "page" : undefined}
+                        className={isAfricaView ? "is-current" : ""}
                       >
                         Africa
                       </button>
                       {selectedCountryName && (
                         <>
-                          <ChevronRight
-                            size={12}
-                            className="shrink-0 text-muted-foreground"
-                          />
+                          <ChevronRight size={13} aria-hidden="true" />
                           <button
                             type="button"
                             onClick={() => {
@@ -2165,11 +2190,16 @@ export default function App() {
                               setSelectedMapStudy(null);
                               if (selectedCountry) zoomToCountry(selectedCountry);
                             }}
-                            className={`truncate font-medium hover:text-primary ${
-                              !selectedCityName && !selectedMapStudy
-                                ? "text-foreground"
-                                : "text-primary"
-                            }`}
+                            aria-current={
+                              !isAfricaView && !selectedCityName && !selectedMapStudy
+                                ? "page"
+                                : undefined
+                            }
+                            className={
+                              !isAfricaView && !selectedCityName && !selectedMapStudy
+                                ? "is-current"
+                                : ""
+                            }
                           >
                             {selectedCountryName}
                           </button>
@@ -2177,21 +2207,15 @@ export default function App() {
                       )}
                       {selectedCityName && (
                         <>
-                          <ChevronRight
-                            size={12}
-                            className="shrink-0 text-muted-foreground"
-                          />
+                          <ChevronRight size={13} aria-hidden="true" />
                           <button
                             type="button"
                             onClick={() => {
                               setSelectedMapStudy(null);
                               if (selectedCity) zoomToCity(selectedCity);
                             }}
-                            className={`truncate font-medium hover:text-primary ${
-                              !selectedMapStudy
-                                ? "text-foreground"
-                                : "text-primary"
-                            }`}
+                            aria-current={!selectedMapStudy ? "page" : undefined}
+                            className={!selectedMapStudy ? "is-current" : ""}
                           >
                             {selectedCityName}
                           </button>
@@ -2199,137 +2223,178 @@ export default function App() {
                       )}
                       {selectedMapStudy && (
                         <>
-                          <ChevronRight
-                            size={12}
-                            className="shrink-0 text-muted-foreground"
-                          />
-                          <span className="truncate text-foreground">
+                          <ChevronRight size={13} aria-hidden="true" />
+                          <span aria-current="page" className="is-current">
                             Study
                           </span>
                         </>
                       )}
                     </nav>
-                    {selectedMapStudy && (
-                      <button
-                        type="button"
-                        onClick={() => setSelectedMapStudy(null)}
-                        className="ml-auto shrink-0 rounded px-2 py-1 text-[10px] font-medium text-primary hover:bg-muted"
-                      >
-                        Back to city
-                      </button>
+                    {!isAfricaView && (
+                      <div className="map-selection-backline">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (selectedMapStudy) {
+                              setSelectedMapStudy(null);
+                            } else {
+                              focusAfrica();
+                            }
+                          }}
+                        >
+                          <ArrowLeft size={14} aria-hidden="true" />
+                          {selectedMapStudy
+                            ? `Back to ${selectedCityName || "city"}`
+                            : "Back to Africa"}
+                        </button>
+                        <span>
+                          {selectedMapStudy ? "RECORD DETAIL" : "GEOGRAPHIC VIEW"}
+                        </span>
+                      </div>
                     )}
                   </div>
 
                   {selectedMapStudy ? (
-                    <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-                      <div className="space-y-3 p-4">
-                        <section className="rounded-xl border border-border bg-white p-3.5 shadow-sm">
-                          <h3 className="text-sm font-semibold leading-snug text-foreground">
-                            {selectedMapStudy.title ||
-                              selectedMapStudy.source ||
-                              "Untitled study"}
-                          </h3>
-                          <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">
-                            {selectedMapStudy.source}
-                            {selectedMapStudy.yearFrom
-                              ? ` · ${selectedMapStudy.yearFrom}${
-                                  selectedMapStudy.yearTo &&
-                                  selectedMapStudy.yearTo !==
-                                    selectedMapStudy.yearFrom
-                                    ? `–${selectedMapStudy.yearTo}`
-                                    : ""
-                                }`
-                              : ""}
-                          </p>
-                          {selectedMapStudy.identifier && (
-                            <a
-                              href={selectedMapStudy.identifier}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="mt-2 inline-flex text-[11px] font-medium text-primary hover:underline"
-                            >
-                              View publication
-                            </a>
-                          )}
-                        </section>
+                    <div className="map-selection-scroll map-study-detail">
+                      <section className="map-study-publication">
+                        <div className="map-section-label">Selected publication</div>
+                        <h3>
+                          {selectedMapStudy.title ||
+                            selectedMapStudy.source ||
+                            "Untitled study"}
+                        </h3>
+                        <p className="map-study-author">
+                          {selectedMapStudy.author || "Author not specified"}
+                        </p>
+                        <p className="map-study-citation">
+                          {selectedMapStudy.source || selectedMapStudy.journal}
+                          {selectedMapStudy.publicationYear
+                            ? ` · Published ${selectedMapStudy.publicationYear}`
+                            : ""}
+                        </p>
+                        {selectedMapStudy.identifier && (
+                          <a
+                            href={selectedMapStudy.identifier}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="map-publication-link"
+                          >
+                            View publication
+                            <ExternalLink size={13} aria-hidden="true" />
+                          </a>
+                        )}
+                      </section>
 
-                        <div className="flex items-center justify-between">
-                          <h3 className="text-xs font-semibold text-foreground">
-                            Methodologies
-                          </h3>
-                          <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
-                            {selectedMapStudy.records.length}
+                      <section className="map-study-record-section">
+                        <div className="map-study-section-heading">
+                          <div>
+                            <span className="map-section-label">Study record</span>
+                            <h3>Methods &amp; measurements</h3>
+                          </div>
+                          <span className="map-study-record-count">
+                            {selectedMapStudy.records.length}{" "}
+                            {selectedMapStudy.records.length === 1
+                              ? "record"
+                              : "records"}
                           </span>
                         </div>
-
-                        {selectedMapStudy.records.map((record, index) => {
-                          const measurementKeys = Object.keys(
-                            record.measurements,
-                          );
-                          return (
-                            <section
-                              key={`${record.studyArea}-${record.samplingPeriod}-${index}`}
-                              className="rounded-xl border border-border bg-white p-3.5 shadow-sm"
-                            >
-                              <div className="flex items-start justify-between gap-2">
-                                <div>
-                                  <h4 className="text-xs font-semibold text-foreground">
-                                    {record.studyArea ||
-                                      `Methodology ${index + 1}`}
-                                  </h4>
-                                  {record.samplingPeriod && (
-                                    <p className="mt-0.5 text-[10px] text-muted-foreground">
-                                      {record.samplingPeriod}
-                                    </p>
-                                  )}
-                                </div>
-                                <span className="shrink-0 rounded bg-primary/8 px-1.5 py-0.5 text-[9px] font-medium text-primary">
-                                  {index + 1} /{" "}
-                                  {selectedMapStudy.records.length}
-                                </span>
-                              </div>
-                              {record.methodology && (
-                                <p className="mt-2 text-[11px] leading-relaxed text-foreground/80">
-                                  {record.methodology}
-                                </p>
-                              )}
-                              {record.description && (
-                                <p className="mt-1.5 text-[10px] leading-relaxed text-muted-foreground">
-                                  {record.description}
-                                </p>
-                              )}
-                              {measurementKeys.length > 0 && (
-                                <div className="mt-3 border-t border-border/70 pt-2.5">
-                                  <p className="mb-1.5 text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
-                                    Measurements
-                                  </p>
-                                  <div className="flex flex-wrap gap-1">
-                                    {measurementKeys.map((key) => {
-                                      const item = categoriesData
-                                        ?.flatMap((group) => group.pollutants)
-                                        .find(
-                                          (pollutant) => pollutant.key === key,
-                                        );
-                                      return (
-                                        <span
-                                          key={key}
-                                          className="rounded-md bg-primary/8 px-1.5 py-1 text-[10px] font-medium text-primary"
-                                        >
-                                          <Chem name={item?.name ?? key} />
-                                        </span>
-                                      );
-                                    })}
+                        <div className="map-study-records">
+                          {selectedMapStudy.records.map((record, index) => {
+                            const measurementKeys = Object.keys(
+                              record.measurements,
+                            );
+                            return (
+                              <article
+                                key={`${record.studyArea}-${record.samplingPeriod}-${index}`}
+                                className="map-method-card"
+                              >
+                                <div className="map-method-card-head">
+                                  <div>
+                                    <span className="map-section-label">
+                                      Methodology {index + 1}
+                                    </span>
+                                    <h4>
+                                      {record.studyArea || "Study location"}
+                                    </h4>
                                   </div>
+                                  <span className="map-method-index">
+                                    {index + 1} / {selectedMapStudy.records.length}
+                                  </span>
                                 </div>
-                              )}
-                            </section>
-                          );
-                        })}
-                      </div>
+                                <dl className="map-study-facts">
+                                  <div>
+                                    <dt>Location</dt>
+                                    <dd>
+                                      {[record.studyArea, selectedMapStudy.country]
+                                        .filter(Boolean)
+                                        .join(", ") || "Not specified"}
+                                    </dd>
+                                  </div>
+                                  <div>
+                                    <dt>Sampling period</dt>
+                                    <dd>{record.samplingPeriod || "Not specified"}</dd>
+                                  </div>
+                                  {(selectedMapStudy.yearFrom ||
+                                    selectedMapStudy.yearTo) && (
+                                    <div>
+                                      <dt>Study years</dt>
+                                      <dd>
+                                        {selectedMapStudy.yearFrom ?? "—"}
+                                        {selectedMapStudy.yearTo &&
+                                        selectedMapStudy.yearTo !==
+                                          selectedMapStudy.yearFrom
+                                          ? `–${selectedMapStudy.yearTo}`
+                                          : ""}
+                                      </dd>
+                                    </div>
+                                  )}
+                                </dl>
+                                {record.methodology && (
+                                  <div className="map-method-description">
+                                    <span className="map-section-label">
+                                      Method
+                                    </span>
+                                    <p>{record.methodology}</p>
+                                  </div>
+                                )}
+                                {record.description && (
+                                  <p className="map-study-description">
+                                    {record.description}
+                                  </p>
+                                )}
+                                {measurementKeys.length > 0 && (
+                                  <div className="map-measurements">
+                                    <span className="map-section-label">
+                                      Measured pollutants
+                                    </span>
+                                    <div className="map-pollutant-tags">
+                                      {measurementKeys.map((key) => {
+                                        const item = categoriesData
+                                          ?.flatMap((group) => group.pollutants)
+                                          .find(
+                                            (pollutant) => pollutant.key === key,
+                                          );
+                                        return (
+                                          <span key={key}>
+                                            <Chem name={item?.name ?? key} />
+                                          </span>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                )}
+                              </article>
+                            );
+                          })}
+                        </div>
+                      </section>
                     </div>
                   ) : (
                     <>
-                      <div className="grid grid-cols-3 divide-x divide-border border-b border-border">
+                      <div
+                        className="map-selection-stats"
+                        aria-label="Coverage summary"
+                      >
                         {[
                           {
                             val: isFiltering
@@ -2337,7 +2402,8 @@ export default function App() {
                                 ? String(sidebarStudyCount)
                                 : `${sidebarStudyCount}/${selectedCountry?.totalStudyCount ?? selectedCountry?.studyCount ?? 0}`
                               : String(sidebarStudyCount),
-                            label: sidebarStudyCount === 1 ? "Study" : "Studies",
+                            label:
+                              sidebarStudyCount === 1 ? "Study" : "Studies",
                           },
                           {
                             val: String(
@@ -2357,71 +2423,74 @@ export default function App() {
                                 ? "Methodologies"
                                 : "Cities",
                           },
-                          { val: sidebarYearRange, label: "Years" },
-                        ].map((s, i) => (
-                          <div
-                            key={i}
-                            className="flex flex-col items-center py-3 px-1"
-                          >
-                            <span className="text-sm font-bold text-foreground leading-tight text-center">
-                              {s.val}
-                            </span>
-                            {s.label && (
-                              <span className="text-[9px] text-muted-foreground mt-0.5">
-                                {s.label}
-                              </span>
-                            )}
+                          { val: sidebarYearRange, label: "Study years" },
+                        ].map((stat) => (
+                          <div key={stat.label} className="map-selection-stat">
+                            <span>{stat.val}</span>
+                            <small>{stat.label}</small>
                           </div>
                         ))}
                       </div>
 
                       {searchQuery && (
-                        <div className="px-4 py-2 border-b border-border bg-muted/20">
-                          <span className="inline-flex flex-wrap gap-1.5 rounded bg-primary/10 px-1.5 py-0.5 text-[9px] font-medium text-primary">
-                            Search: "
-                            {searchQuery.length > 15
-                              ? searchQuery.slice(0, 15) + "…"
+                        <div className="map-search-status" role="status">
+                          Results refined by{" "}
+                          <strong>
+                            “
+                            {searchQuery.length > 22
+                              ? `${searchQuery.slice(0, 22)}…`
                               : searchQuery}
-                            "
-                          </span>
+                            ”
+                          </strong>
                         </div>
                       )}
 
-                      <div className="px-4 py-3 border-b border-border">
-                        <div className="relative">
+                      <div className="map-selection-search">
+                        <div className="map-search-field">
                           <Search
-                            size={12}
-                            className={`absolute left-2.5 top-1/2 -translate-y-1/2 transition-colors duration-300 ${
-                              searchQuery
-                                ? "text-primary"
-                                : "text-muted-foreground"
-                            }`}
+                            size={15}
+                            aria-hidden="true"
+                            className={searchQuery ? "is-active" : ""}
                           />
                           <input
-                            type="text"
-                            placeholder="Search studies by title, author, keyword..."
+                            type="search"
+                            placeholder="Search places, titles, authors…"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className={`w-full text-[11px] border rounded pl-7 pr-7 py-2 bg-background focus:outline-none focus:ring-1 focus:ring-primary/30 placeholder:text-muted-foreground/60 transition-all duration-300 ${
-                              searchQuery
-                                ? "search-active border-primary"
-                                : "border-border"
-                            }`}
+                            aria-label="Search places, studies, or authors"
                           />
                           {searchQuery && (
                             <button
+                              type="button"
                               onClick={() => setSearchQuery("")}
-                              className="absolute right-2 top-1/2 -translate-y-1/2 transition-transform hover:scale-110 active:scale-90"
+                              aria-label="Clear search"
                             >
-                              <X size={12} className="text-primary" />
+                              <X size={15} aria-hidden="true" />
                             </button>
                           )}
                         </div>
                       </div>
 
-                      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+                      <div className="map-selection-list-heading">
+                        <span>
+                          {isAfricaView
+                            ? "Country coverage"
+                            : selectedCityName
+                              ? "Studies in this city"
+                              : "Cities in this country"}
+                        </span>
+                        <span>
+                          {isAfricaView
+                            ? `${visibleAfricaCountries.length} results`
+                            : selectedCityName
+                              ? `${visibleCityStudies.length} results`
+                              : `${visibleCountryCities.length} results`}
+                        </span>
+                      </div>
+
+                      <div className="map-selection-scroll map-selection-list">
                         {isAfricaView && (
-                          <div className="divide-y divide-border/40">
+                          <div className="map-selection-rows">
                             {visibleAfricaCountries.map((country) => {
                               const summary = countrySummariesData?.find(
                                 (item) => item.name === country.name,
@@ -2442,35 +2511,46 @@ export default function App() {
                                     setSelectedCountryName(summary.name);
                                     zoomToCountry(summary);
                                   }}
-                                  className="w-full px-4 py-3 text-left transition-colors hover:bg-muted/40"
+                                  className="map-country-row"
+                                  aria-label={`${country.name}, ${country.studyCount} ${country.studyCount === 1 ? "study" : "studies"}, ${country.cityCount} mapped ${country.cityCount === 1 ? "city" : "cities"}`}
                                 >
-                                  <div className="flex items-center justify-between gap-3">
-                                    <span className="truncate text-xs font-medium text-foreground">
+                                  <span className="map-row-main">
+                                    <span className="map-row-title">
                                       {country.name}
                                     </span>
-                                    <span className="shrink-0 rounded bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
-                                      {country.studyCount}
+                                    <span className="map-row-count">
+                                      {country.studyCount}{" "}
+                                      {country.studyCount === 1
+                                        ? "study"
+                                        : "studies"}
                                     </span>
-                                  </div>
-                                  <div className="mt-1 flex items-center justify-between gap-3">
-                                    <span className="text-[10px] text-muted-foreground">
-                                      {country.cityCount}{" "}
+                                  </span>
+                                  <span className="map-row-meta">
+                                    <span>
+                                      {country.cityCount} mapped{" "}
                                       {country.cityCount === 1 ? "city" : "cities"}
                                     </span>
-                                    <div className="h-1 w-20 overflow-hidden rounded-full bg-muted">
-                                      <div
-                                        className="h-full rounded-full bg-primary/70"
-                                        style={{ width: `${density}%` }}
-                                      />
-                                    </div>
-                                  </div>
+                                    <span
+                                      className="map-density"
+                                      aria-hidden="true"
+                                    >
+                                      <i style={{ width: `${density}%` }} />
+                                    </span>
+                                  </span>
                                 </button>
                               );
                             })}
+                            {visibleAfricaCountries.length === 0 && (
+                              <div className="map-selection-empty">
+                                <Search size={18} aria-hidden="true" />
+                                <strong>No countries match</strong>
+                                <p>Try another place name or clear your search.</p>
+                              </div>
+                            )}
                           </div>
                         )}
                         {!isAfricaView && selectedCityName && (
-                          <div className="divide-y divide-border/40">
+                          <div className="map-selection-rows">
                             {visibleCityStudies.map((study) => {
                               const tags = cityCategoryTags(study);
                               const year =
@@ -2480,24 +2560,19 @@ export default function App() {
                                   key={study.id}
                                   type="button"
                                   onClick={() => openMapStudy(study)}
-                                  className="w-full px-4 py-3 text-left transition-colors hover:bg-muted/40"
+                                  className="map-study-row"
                                 >
-                                  <span className="block text-xs font-semibold leading-snug text-foreground">
+                                  <span className="map-study-row-title">
                                     {study.title || study.source}
                                   </span>
-                                  <span className="mt-1 block text-[10px] text-muted-foreground">
+                                  <span className="map-study-row-meta">
                                     {study.author || study.source}
                                     {year ? ` · ${year}` : ""}
                                   </span>
                                   {tags.length > 0 && (
-                                    <span className="mt-2 flex flex-wrap gap-1">
+                                    <span className="map-study-row-tags">
                                       {tags.map((tag) => (
-                                        <span
-                                          key={tag}
-                                          className="rounded bg-primary/10 px-1.5 py-0.5 text-[9px] font-medium text-primary"
-                                        >
-                                          {tag}
-                                        </span>
+                                        <span key={tag}>{tag}</span>
                                       ))}
                                     </span>
                                   )}
@@ -2505,97 +2580,85 @@ export default function App() {
                               );
                             })}
                             {visibleCityStudies.length === 0 && (
-                              <p className="px-4 py-6 text-center text-[11px] text-muted-foreground">
-                                No studies match this search.
-                              </p>
+                              <div className="map-selection-empty">
+                                <Search size={18} aria-hidden="true" />
+                                <strong>No studies match</strong>
+                                <p>
+                                  Try a different title, author, or clear your
+                                  search.
+                                </p>
+                              </div>
                             )}
                           </div>
                         )}
                         {!isAfricaView && !selectedCityName && (
                           <>
-                        {sidebarStudyCount === 0 && (
-                          <div className="px-5 py-8 text-center">
-                            <div className="mx-auto mb-3 flex h-9 w-9 items-center justify-center rounded-full bg-muted text-muted-foreground">
-                              <Info size={16} />
-                            </div>
-                            <div className="text-xs font-semibold text-foreground">
-                              {isFiltering
-                                ? "No studies match filters"
-                                : isAfricaView
-                                  ? "No studies are available in the current data."
-                                  : "No studies mapped yet"}
-                            </div>
-                            <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
-                              {isFiltering
-                                ? "Try clearing your filters or selecting a different country."
-                                : isAfricaView
-                                  ? "No research studies are available in the current dataset."
-                                  : `${selectedCountryName} is selectable, but there are no research studies in the current dataset.`}
-                            </p>
-                          </div>
-                        )}
-
-                        {sidebarStudyCount > 0 && (
-                          <>
-                            <div className="divide-y divide-border/40">
-                              {visibleCountryCities.map((city, idx) => (
-                                <div
-                                  key={`${city.country}-${city.name}-${idx}`}
-                                  id={`city-row-${city.country}-${city.name}`}
-                                  className={idx === 0 ? "" : ""}
-                                >
-                                  <button
-                                    className="flex items-center justify-between w-full px-4 py-3 hover:bg-muted/40 transition-all duration-200"
-                                    onClick={() => {
-                                      toggleCity(city.name);
-                                      setSelectedCityName(city.name);
-                                    }}
+                            {sidebarStudyCount === 0 && (
+                              <div className="map-selection-empty">
+                                <Info size={18} aria-hidden="true" />
+                                <strong>
+                                  {isFiltering
+                                    ? "No studies match filters"
+                                    : "No studies mapped yet"}
+                                </strong>
+                                <p>
+                                  {isFiltering
+                                    ? "Try clearing your filters or selecting a different country."
+                                    : `${selectedCountryName} is selectable, but has no research studies in the current dataset.`}
+                                </p>
+                              </div>
+                            )}
+                            {sidebarStudyCount > 0 && (
+                              <div className="map-selection-rows">
+                                {visibleCountryCities.map((city, idx) => (
+                                  <div
+                                    key={`${city.country}-${city.name}-${idx}`}
+                                    id={`city-row-${city.country}-${city.name}`}
+                                    className="map-city-group"
                                   >
-                                    <div className="flex items-center gap-2.5">
-                                      <span
-                                        className={`transition-transform duration-200 ${expanded.has(city.name) ? "rotate-0" : "-rotate-90"}`}
-                                      >
+                                    <button
+                                      type="button"
+                                      className="map-city-row"
+                                      onClick={() => {
+                                        toggleCity(city.name);
+                                        setSelectedCityName(city.name);
+                                      }}
+                                      aria-expanded={expanded.has(city.name)}
+                                      aria-label={`${city.name}, ${city.studyCount} ${city.studyCount === 1 ? "study" : "studies"}`}
+                                    >
+                                      <span className="map-city-chevron">
                                         <ChevronDown
-                                          size={12}
-                                          className="text-muted-foreground"
+                                          size={15}
+                                          aria-hidden="true"
                                         />
                                       </span>
-                                      <div className="text-left">
-                                        <div className="text-xs font-medium text-foreground">
-                                          {city.name}
-                                        </div>
-                                        <div className="text-[10px] text-muted-foreground max-w-30 truncate">
-                                          {city.settings?.join(", ")}
-                                          
-                                        </div>
-                                      </div>
-                                    </div>
-                                    <span
-                                      className="text-[11px] font-semibold text-primary bg-primary/10 rounded px-2 py-0.5"
-                                      style={{
-                                        fontFamily: "'DM Mono', monospace",
-                                      }}
+                                      <span className="map-city-copy">
+                                        <strong>{city.name}</strong>
+                                        <small>
+                                          {city.settings?.join(", ") ||
+                                            "Study location"}
+                                        </small>
+                                      </span>
+                                      <span className="map-city-count">
+                                        {city.studyCount}{" "}
+                                        {city.studyCount === 1
+                                          ? "study"
+                                          : "studies"}
+                                      </span>
+                                    </button>
+                                    <div
+                                      className={
+                                        expanded.has(city.name)
+                                          ? "map-city-expanded is-expanded"
+                                          : "map-city-expanded"
+                                      }
                                     >
-                                      {city.studyCount}{" "}
-                                      {city.studyCount === 1
-                                        ? "study"
-                                        : "studies"}
-                                    </span>
-                                  </button>
-                                  <div
-                                    className={
-                                      expanded.has(city.name)
-                                        ? "block"
-                                        : "hidden"
-                                    }
-                                  >
-                                    <div className="bg-muted/30 pl-10 pr-4 py-2 space-y-0.5">
                                       {city.studies.length === 0 ? (
-                                        <div className="text-[11px] text-muted-foreground py-1">
+                                        <div className="map-city-empty">
                                           No study details available
                                         </div>
                                       ) : (
-                                        <div className="space-y-1.5 py-1">
+                                        <div className="map-city-study-list">
                                           {city.studies.map((s, studyIndex) => {
                                             const pKeys = new Set(
                                               (
@@ -2617,6 +2680,7 @@ export default function App() {
                                             return (
                                               <button
                                                 key={`${city.name}-${s.id}-${studyIndex}`}
+                                                type="button"
                                                 onClick={() => {
                                                   const study =
                                                     sidebarStudies.find(
@@ -2626,30 +2690,25 @@ export default function App() {
                                                   if (study)
                                                     openMapStudy(study);
                                                 }}
-                                                className="w-full text-left rounded-lg border border-border bg-white p-2.5 hover:border-primary/30 hover:shadow-sm transition-all duration-150"
+                                                className="map-city-study"
                                               >
-                                                <div className="text-[11px] font-medium text-foreground leading-snug line-clamp-2">
+                                                <strong>
                                                   {s.title || s.source}
-                                                </div>
-                                                <div className="mt-0.5 text-[10px] text-muted-foreground">
-                                                  {s.source}
-                                                </div>
+                                                </strong>
+                                                <span>{s.source}</span>
                                                 {pNames.length > 0 && (
-                                                  <div className="mt-1.5 flex flex-wrap gap-1">
-                                                    {pNames.map((n) => (
-                                                      <span
-                                                        key={n}
-                                                        className="rounded bg-primary/10 px-1.5 py-0.5 text-[9px] font-medium text-primary"
-                                                      >
-                                                        {n}
+                                                  <span className="map-study-row-tags">
+                                                    {pNames.map((name) => (
+                                                      <span key={name}>
+                                                        {name}
                                                       </span>
                                                     ))}
                                                     {pKeys.size > 3 && (
-                                                      <span className="rounded bg-muted px-1.5 py-0.5 text-[9px] text-muted-foreground">
+                                                      <span>
                                                         +{pKeys.size - 3}
                                                       </span>
                                                     )}
-                                                  </div>
+                                                  </span>
                                                 )}
                                               </button>
                                             );
@@ -2658,12 +2717,20 @@ export default function App() {
                                       )}
                                     </div>
                                   </div>
-                                </div>
-                              ))}
-                            </div>
+                                ))}
+                                {visibleCountryCities.length === 0 && (
+                                  <div className="map-selection-empty">
+                                    <Search size={18} aria-hidden="true" />
+                                    <strong>No cities match</strong>
+                                    <p>
+                                      Try another place name or clear your
+                                      search.
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+                            )}
                           </>
-                        )}
-                      </>
                         )}
                       </div>
                     </>

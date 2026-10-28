@@ -1,0 +1,57 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap");
+
+html:has(.map-sidebar-extraction) {
+  font-size: 17px;
+}
+
+.map-sidebar-extraction {
+  --background: 216 60% 99%;
+  --foreground: 217 33% 16%;
+  --card: 0 0% 100%;
+  --card-foreground: 217 33% 16%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 217 33% 16%;
+  --primary: 219 79% 54%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 216 33% 95%;
+  --secondary-foreground: 217 33% 16%;
+  --muted: 210 33% 96%;
+  --muted-foreground: 215 21% 40%;
+  --accent: 219 79% 54%;
+  --accent-foreground: 0 0% 100%;
+  --destructive: 0 66% 60%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 214 32% 91%;
+  --input: 0 0% 100%;
+  --ring: 219 79% 54%;
+  color: #172235;
+  font-family: Inter, sans-serif;
+}
+
+.map-sidebar-extraction [class~="text-xs"] {
+  font-size: 0.8125rem !important;
+}
+
+.map-sidebar-extraction [class~="text-sm"] {
+  font-size: 0.9375rem !important;
+}
+
+.map-sidebar-extraction [class~="text-[9px]"] {
+  font-size: 0.75rem !important;
+}
+
+.map-sidebar-extraction [class~="text-[10px]"] {
+  font-size: 0.8125rem !important;
+}
+
+.map-sidebar-extraction [class~="text-[11px]"] {
+  font-size: 0.875rem !important;
+}
+
+.map-sidebar-extraction .text-muted-foreground {
+  color: #53657d !important;
+}
+
+.map-sidebar-extraction .search-active {
+  box-shadow: 0 0 0 1px #3d35f4, 0 0 10px rgba(61, 53, 244, 0.1);
+}

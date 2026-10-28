@@ -12,6 +12,10 @@ author = "agent"
 task = "workflow.run"
 args = "Start application"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "artifacts/mockup-sandbox: Component Preview Server"
+
 [[workflows.workflow]]
 name = "Start application"
 author = "agent"
@@ -24,6 +28,23 @@ waitForPort = 5000
 [workflows.workflow.metadata]
 outputType = "webview"
 
+[[workflows.workflow]]
+name = "artifacts/mockup-sandbox: Component Preview Server"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "BASE_PATH=/__mockup PORT=5174 npm run dev --workspace=@workspace/mockup-sandbox -- --host 0.0.0.0"
+waitForPort = 5174
+
+[workflows.workflow.metadata]
+outputType = "console"
+isCanvasWorkflow = true
+
 [[ports]]
 localPort = 5000
 externalPort = 80
+
+[[ports]]
+localPort = 5174
+externalPort = 3001
