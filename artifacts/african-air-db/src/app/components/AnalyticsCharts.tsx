@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import {
-  Area,
-  AreaChart,
+  Bar,
+  BarChart,
   CartesianGrid,
   Cell,
   Pie,
@@ -13,7 +13,7 @@ import {
 } from "recharts";
 import { useAsync } from "../hooks/useData";
 import {
-  getPollutionVariables,
+  getMeasurementStatistics,
   getStudiesByYear,
 } from "../services/analyticsService";
 
@@ -116,26 +116,19 @@ function AnnualStudiesCard({ onRetry }: { onRetry: () => void }) {
         <div
           className="min-h-52 min-w-0 flex-1 sm:min-h-56"
           role="img"
-          aria-label="Area chart showing total studies by publication year"
+          aria-label="Histogram showing total studies by publication year"
         >
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart
+            <BarChart
               data={annualData}
+              barCategoryGap={0}
               margin={{ top: 8, right: 24, left: 0, bottom: 4 }}
             >
-              <defs>
-                <linearGradient
-                  id="homeStudiesGradient"
-                  x1="0"
-                  y1="0"
-                  x2="0"
-                  y2="1"
-                >
-                  <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.18} />
-                  <stop offset="95%" stopColor="#3B82F6" stopOpacity={0.015} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#EDF1F6" />
+              <CartesianGrid
+                strokeDasharray="3 3"
+                stroke="#EDF1F6"
+                vertical={false}
+              />
               <XAxis
                 dataKey="year"
                 tick={axisTick}
@@ -152,22 +145,20 @@ function AnnualStudiesCard({ onRetry }: { onRetry: () => void }) {
                 width={42}
               />
               <Tooltip
+                cursor={{ fill: "rgba(59, 130, 246, 0.08)" }}
                 contentStyle={tooltipStyle}
                 formatter={(value) => [Number(value).toLocaleString(), "Studies"]}
                 labelFormatter={(label) => `Year ${label}`}
               />
-              <Area
-                type="monotone"
+              <Bar
                 dataKey="count"
                 name="Studies"
-                stroke="#3B82F6"
-                strokeWidth={2.25}
-                fill="url(#homeStudiesGradient)"
-                activeDot={{ r: 4, strokeWidth: 0 }}
-                dot={false}
+                fill="#3B82F6"
+                stroke="#FFFFFF"
+                strokeWidth={1}
                 isAnimationActive={false}
               />
-            </AreaChart>
+            </BarChart>
           </ResponsiveContainer>
         </div>
       )}
@@ -176,28 +167,22 @@ function AnnualStudiesCard({ onRetry }: { onRetry: () => void }) {
 }
 
 function PollutantDistributionCard({ onRetry }: { onRetry: () => void }) {
-  const pollutants = useAsync(getPollutionVariables, []);
-  const categoryData = useMemo(() => {
-    const variablesByType = new Map<string, Set<string>>();
-    for (const row of pollutants.data ?? []) {
-      const category = row.variable_type.trim() || "Unclassified";
-      const variable = row.pollution_variable.trim();
-      if (!variable) continue;
-      const variables = variablesByType.get(category) ?? new Set<string>();
-      variables.add(variable);
-      variablesByType.set(category, variables);
-    }
-
-    return Array.from(variablesByType.entries())
-      .map(([name, variables]) => ({
-        name: CATEGORY_LABELS[name.toLowerCase()] ??
-          name.replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase()),
-        full: CATEGORY_LABELS[name.toLowerCase()] ??
-          name.replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase()),
-        value: variables.size,
-      }))
-      .sort((a, b) => b.value - a.value || a.name.localeCompare(b.name));
-  }, [pollutants.data]);
+  const pollutants = useAsync(getMeasurementStatistics, []);
+  const categoryData = useMemo(
+    () =>
+      Object.entries(pollutants.data?.measurements_by_category ?? {})
+        .map(([key, value]) => {
+          const label =
+            CATEGORY_LABELS[key.toLowerCase()] ??
+            key
+              .replace(/_/g, " ")
+              .replace(/\b\w/g, (letter) => letter.toUpperCase());
+          return { name: label, full: label, value };
+        })
+        .filter((item) => item.value > 0)
+        .sort((a, b) => b.value - a.value || a.name.localeCompare(b.name)),
+    [pollutants.data],
+  );
 
   return (
     <article className="min-w-0 rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
@@ -223,7 +208,7 @@ function PollutantDistributionCard({ onRetry }: { onRetry: () => void }) {
           <div
             className="h-40 min-w-0"
             role="img"
-            aria-label="Donut chart showing unique pollutant variables by category"
+            aria-label="Donut chart showing measurements by pollutant category"
           >
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
@@ -250,7 +235,7 @@ function PollutantDistributionCard({ onRetry }: { onRetry: () => void }) {
                   contentStyle={tooltipStyle}
                   formatter={(value, _name, item) => [
                     `${Number(value).toLocaleString()} ${
-                      Number(value) === 1 ? "variable" : "variables"
+                      Number(value) === 1 ? "measurement" : "measurements"
                     }`,
                     item.payload?.full ?? "",
                   ]}

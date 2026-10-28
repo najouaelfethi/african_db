@@ -12,6 +12,12 @@ export interface PollutionVariableRow {
   percentage: number;
 }
 
+export interface MeasurementStatistics {
+  total_measurements: number;
+  avg_measurements_per_study: number;
+  measurements_by_category: Record<string, number>;
+}
+
 async function getAnalyticsResponse(path: string): Promise<unknown> {
   const response = await fetch(apiUrl(`/api/v1/analytics/${path}`), {
     method: "GET",
@@ -51,6 +57,46 @@ export async function getStudiesByYear(): Promise<StudiesByYearRow[]> {
 
     return { year: row.year, total_studies: row.total_studies };
   });
+}
+
+export async function getMeasurementStatistics(): Promise<MeasurementStatistics> {
+  const payload = await getAnalyticsResponse("measurement-statistics");
+  if (
+    typeof payload !== "object" ||
+    payload === null ||
+    !("measurements_by_category" in payload) ||
+    typeof payload.measurements_by_category !== "object" ||
+    payload.measurements_by_category === null ||
+    Array.isArray(payload.measurements_by_category)
+  ) {
+    throw new Error("Measurement-statistics response is invalid");
+  }
+
+  const byCategory: Record<string, number> = {};
+  for (const [category, count] of Object.entries(
+    payload.measurements_by_category,
+  )) {
+    if (!isFiniteNumber(count) || count < 0) {
+      throw new Error(`Invalid measurement count for category "${category}"`);
+    }
+    byCategory[category] = count;
+  }
+
+  const total =
+    "total_measurements" in payload && isFiniteNumber(payload.total_measurements)
+      ? payload.total_measurements
+      : Object.values(byCategory).reduce((sum, count) => sum + count, 0);
+  const average =
+    "avg_measurements_per_study" in payload &&
+    isFiniteNumber(payload.avg_measurements_per_study)
+      ? payload.avg_measurements_per_study
+      : 0;
+
+  return {
+    total_measurements: total,
+    avg_measurements_per_study: average,
+    measurements_by_category: byCategory,
+  };
 }
 
 export async function getPollutionVariables(): Promise<PollutionVariableRow[]> {

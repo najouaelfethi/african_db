@@ -53,9 +53,9 @@ import {
 import {
   getCountrySummaries,
   getDatasetStats,
-  getPollutantsByCategory,
   queryStudies,
 } from "./services/studyService";
+import { getMeasurementStatistics } from "./services/analyticsService";
 import {
   getContactRequests,
   updateContactRequestStatus,
@@ -162,6 +162,14 @@ const PIE_COLORS = [
   "#14B8A6",
   "#F97316",
 ];
+const MEASUREMENT_CATEGORY_LABELS: Record<string, string> = {
+  bulk_pm: "Bulk PM",
+  carbonaceous: "Carbonaceous aerosols",
+  gas: "Atmospheric gases",
+  organic: "Organic pollutants",
+  trace_metals: "Trace metals",
+  wsia: "Water soluble inorganic aerosols",
+};
 const ALL_MAP_COUNTRIES = Object.keys(COUNTRY_TOPO_ID).sort((a, b) =>
   a.localeCompare(b),
 );
@@ -251,7 +259,7 @@ function parseCSV(text: string): { headers: string[]; rows: string[][] } {
 function DashboardTab({ onNavigate }: { onNavigate: (t: AdminTab) => void }) {
   const { data: stats } = useAsync(getDatasetStats, []);
   const { data: countrySummaries } = useAsync(() => getCountrySummaries(), []);
-  const { data: pollutantCategories } = useAsync(getPollutantsByCategory, []);
+  const { data: measurementStats } = useAsync(getMeasurementStatistics, []);
 
   // Studies per year: group all studies by yearTo
   const studiesPerYear = useMemo(() => {
@@ -281,15 +289,22 @@ function DashboardTab({ onNavigate }: { onNavigate: (t: AdminTab) => void }) {
       .slice(0, 8);
   }, [countrySummaries]);
 
-  // Pollutant distribution
-  const pollutantDist = useMemo(() => {
-    if (!pollutantCategories) return [];
-    return pollutantCategories.map((cat) => ({
-      name: cat.category,
-      full: cat.category,
-      value: cat.pollutants.length,
-    }));
-  }, [pollutantCategories]);
+  // Pollutant distribution: measurements per category from the analytics API
+  const pollutantDist = useMemo(
+    () =>
+      Object.entries(measurementStats?.measurements_by_category ?? {})
+        .map(([key, value]) => {
+          const label =
+            MEASUREMENT_CATEGORY_LABELS[key.toLowerCase()] ??
+            key
+              .replace(/_/g, " ")
+              .replace(/\b\w/g, (letter) => letter.toUpperCase());
+          return { name: label, full: label, value };
+        })
+        .filter((item) => item.value > 0)
+        .sort((a, b) => b.value - a.value || a.name.localeCompare(b.name)),
+    [measurementStats],
+  );
 
   const publishedThisYear = useMemo(
     () =>
@@ -372,7 +387,7 @@ function DashboardTab({ onNavigate }: { onNavigate: (t: AdminTab) => void }) {
 
       {/* Charts row */}
       <div className="grid xl:grid-cols-[1.6fr_1fr] gap-4">
-        {/* Line chart */}
+        {/* Histogram */}
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
           <div className="flex items-center justify-between mb-4">
             <div>
@@ -385,31 +400,34 @@ function DashboardTab({ onNavigate }: { onNavigate: (t: AdminTab) => void }) {
             </div>
           </div>
           <ResponsiveContainer width="100%" height={200}>
-            <AreaChart data={studiesPerYear} margin={{ left: -20, right: 4 }}>
-              <defs>
-                <linearGradient id="studyGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.15} />
-                  <stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+            <BarChart
+              data={studiesPerYear}
+              barCategoryGap={0}
+              margin={{ left: -20, right: 4 }}
+            >
+              <CartesianGrid
+                strokeDasharray="3 3"
+                stroke="#f1f5f9"
+                vertical={false}
+              />
               <XAxis
                 dataKey="year"
                 tick={{ fontSize: 10, fill: "#94a3b8" }}
                 interval={2}
               />
               <YAxis tick={{ fontSize: 10, fill: "#94a3b8" }} />
-              <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} />
-              <Area
-                type="monotone"
+              <Tooltip
+                cursor={{ fill: "rgba(59, 130, 246, 0.08)" }}
+                contentStyle={{ fontSize: 12, borderRadius: 8 }}
+              />
+              <Bar
                 dataKey="count"
-                stroke="#3B82F6"
-                fill="url(#studyGrad)"
-                strokeWidth={2}
-                dot={false}
+                fill="#3B82F6"
+                stroke="#ffffff"
+                strokeWidth={1}
                 name="Studies"
               />
-            </AreaChart>
+            </BarChart>
           </ResponsiveContainer>
         </div>
 

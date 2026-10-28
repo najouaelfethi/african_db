@@ -179,10 +179,6 @@ const ISLAND_MARKERS = [
   },
 ] as const;
 
-// ── Country flags ─────────────────────────────────────────────────────────────
-// Keys MUST match the canonical country names produced by canonicalCountryName()
-// in studyService.ts, which are the exact keys used in COUNTRY_TOPO_ID (geo.ts).
-// Any mismatch silently produces no flag.
 
 const COUNTRY_ISO: Record<string, string> = {
   // North Africa

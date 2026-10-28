@@ -321,12 +321,30 @@ function inferredCategoryKey(itemName: string): string | null {
 }
 
 interface PublicApiStatistics {
+  total_studies?: unknown;
+  total_countries?: unknown;
+  total_study_areas?: unknown;
+  total_authors?: unknown;
+  total_articles?: unknown;
+  total_journals?: unknown;
   total_measurements?: unknown;
   total_variables?: unknown;
   year_range?: {
     min?: unknown;
     max?: unknown;
   };
+}
+
+export interface PublicStatistics {
+  totalStudies: number;
+  totalCountries: number;
+  totalStudyAreas: number;
+  totalAuthors: number;
+  totalArticles: number;
+  totalJournals: number;
+  totalMeasurements: number;
+  totalVariables: number;
+  yearRange: { min: number; max: number };
 }
 
 async function getPublicMapData(): Promise<PublicApiResponse> {
@@ -375,27 +393,74 @@ export async function getPublicationYearRange(): Promise<{ min: number; max: num
   return { min, max };
 }
 
-export async function getPublicStatisticsCounts(): Promise<{
-  totalMeasurements: number;
-  totalVariables: number;
-}> {
+export async function getPublicStatistics(): Promise<PublicStatistics> {
   const statistics = await fetchPublicStatistics();
-  const { total_measurements, total_variables } = statistics;
+  const totalStudies = requireStatisticsCount(
+    statistics.total_studies,
+    "total_studies",
+  );
+  const totalCountries = requireStatisticsCount(
+    statistics.total_countries,
+    "total_countries",
+  );
+  const totalStudyAreas = requireStatisticsCount(
+    statistics.total_study_areas,
+    "total_study_areas",
+  );
+  const totalAuthors = requireStatisticsCount(
+    statistics.total_authors,
+    "total_authors",
+  );
+  const totalArticles = requireStatisticsCount(
+    statistics.total_articles,
+    "total_articles",
+  );
+  const totalJournals = requireStatisticsCount(
+    statistics.total_journals,
+    "total_journals",
+  );
+  const totalMeasurements = requireStatisticsCount(
+    statistics.total_measurements,
+    "total_measurements",
+  );
+  const totalVariables = requireStatisticsCount(
+    statistics.total_variables,
+    "total_variables",
+  );
+
+  const { min, max } = statistics.year_range ?? {};
   if (
-    typeof total_measurements !== "number" ||
-    !Number.isSafeInteger(total_measurements) ||
-    total_measurements < 0 ||
-    typeof total_variables !== "number" ||
-    !Number.isSafeInteger(total_variables) ||
-    total_variables < 0
+    typeof min !== "number" ||
+    !Number.isInteger(min) ||
+    typeof max !== "number" ||
+    !Number.isInteger(max) ||
+    min > max
   ) {
-    throw new Error("Statistics API returned invalid measurement or variable totals");
+    throw new Error("Statistics API returned an invalid year_range");
   }
 
   return {
-    totalMeasurements: total_measurements,
-    totalVariables: total_variables,
+    totalStudies,
+    totalCountries,
+    totalStudyAreas,
+    totalAuthors,
+    totalArticles,
+    totalJournals,
+    totalMeasurements,
+    totalVariables,
+    yearRange: { min, max },
   };
+}
+
+function requireStatisticsCount(value: unknown, field: string): number {
+  if (
+    typeof value !== "number" ||
+    !Number.isSafeInteger(value) ||
+    value < 0
+  ) {
+    throw new Error(`Statistics API returned an invalid ${field}`);
+  }
+  return value;
 }
 
 async function fetchPublicStatistics(): Promise<PublicApiStatistics> {

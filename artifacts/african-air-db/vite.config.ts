@@ -39,6 +39,10 @@ export default defineConfig({
     host: "0.0.0.0",
     allowedHosts: true,
     proxy: {
+      "/api/v1/public/statistics": {
+        target: "http://localhost:8000",
+        changeOrigin: true,
+      },
       "/api": {
         target: "https://arcairedbapp.ddns.net/",
         changeOrigin: true,

@@ -5,6 +5,7 @@ import {
   getCountrySummaries,
   getDatasetStats,
   getStudyById,
+  getPublicStatistics,
   queryStudies,
 } from "./studyService";
 
@@ -111,6 +112,64 @@ describe("public filters response", () => {
       category: "organic",
       subcategory: "pah",
       mean: 13,
+    });
+  });
+
+  describe("public statistics response", () => {
+    it("maps all homepage statistics from the API response", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue({
+          ok: true,
+          json: async () => ({
+            total_studies: 289,
+            total_countries: 32,
+            total_study_areas: 128,
+            total_authors: 241,
+            total_articles: 288,
+            total_journals: 246,
+            total_measurements: 2251,
+            total_variables: 95,
+            year_range: { min: 1992, max: 2026 },
+          }),
+        }),
+      );
+
+      await expect(getPublicStatistics()).resolves.toEqual({
+        totalStudies: 289,
+        totalCountries: 32,
+        totalStudyAreas: 128,
+        totalAuthors: 241,
+        totalArticles: 288,
+        totalJournals: 246,
+        totalMeasurements: 2251,
+        totalVariables: 95,
+        yearRange: { min: 1992, max: 2026 },
+      });
+    });
+
+    it("rejects invalid statistic totals", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue({
+          ok: true,
+          json: async () => ({
+            total_studies: -1,
+            total_countries: 32,
+            total_study_areas: 128,
+            total_authors: 241,
+            total_articles: 288,
+            total_journals: 246,
+            total_measurements: 2251,
+            total_variables: 95,
+            year_range: { min: 1992, max: 2026 },
+          }),
+        }),
+      );
+
+      await expect(getPublicStatistics()).rejects.toThrow(
+        "Statistics API returned an invalid total_studies",
+      );
     });
   });
 

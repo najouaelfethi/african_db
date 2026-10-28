@@ -924,7 +924,9 @@ export default function App() {
         area.studies.forEach((study) => studiesById.set(study.id, study));
         existing.studies = [...studiesById.values()];
         existing.studyCount = existing.studies.length;
-        existing.settings = [...new Set([...existing.settings, ...area.settings])];
+        existing.settings = [
+          ...new Set([...existing.settings, ...area.settings]),
+        ];
         if (!existing.hasPreciseCoordinates && area.hasPreciseCoordinates) {
           existing.coordinates = area.coordinates;
           existing.hasPreciseCoordinates = true;
@@ -936,7 +938,8 @@ export default function App() {
   const africaCountrySummaries = useMemo(() => {
     const countriesByName = new Map<string, Map<string, Study>>();
     (countrySummariesData ?? []).forEach((country) => {
-      const studies = countriesByName.get(country.name) ?? new Map<string, Study>();
+      const studies =
+        countriesByName.get(country.name) ?? new Map<string, Study>();
       country.studies.forEach((study) => studies.set(study.id, study));
       countriesByName.set(country.name, studies);
     });
@@ -952,8 +955,7 @@ export default function App() {
         studies: [...studies.values()],
       }))
       .sort(
-        (a, b) =>
-          b.studyCount - a.studyCount || a.name.localeCompare(b.name),
+        (a, b) => b.studyCount - a.studyCount || a.name.localeCompare(b.name),
       );
   }, [africaCities, countrySummariesData]);
   const selectedCity = selectedCountry?.areas.find(
@@ -966,17 +968,35 @@ export default function App() {
       studyIds.has(study.id),
     );
   }, [selectedCity, selectedCountry]);
+  const selectedCityPollutantCount = useMemo(
+    () =>
+      new Set(
+        selectedCityStudies.flatMap((study) =>
+          study.records.flatMap((record) => Object.keys(record.measurements)),
+        ),
+      ).size,
+    [selectedCityStudies],
+  );
+  const selectedMapStudyMethodologyCount =
+    selectedMapStudy?.records.length ?? 0;
+  const selectedMapStudyYearRange =
+    selectedMapStudy?.yearFrom != null && selectedMapStudy.yearTo != null
+      ? `${selectedMapStudy.yearFrom}-${selectedMapStudy.yearTo}`
+      : selectedMapStudy?.yearFrom != null
+        ? String(selectedMapStudy.yearFrom)
+        : selectedMapStudy?.yearTo != null
+          ? String(selectedMapStudy.yearTo)
+          : "No data";
   const countryStudyCount = selectedCountry?.studyCount ?? 0;
   const countryCities = selectedCountry?.areas ?? [];
   const countryStudies = selectedCountry?.studies ?? [];
-  const sidebarStudies = isAfricaView
-    ? africaStudies
-    : selectedCityName
-      ? selectedCityStudies
-      : countryStudies;
+  const sidebarStudies = isAfricaView ? africaStudies : countryStudies;
   const sidebarStudyCount = sidebarStudies.length;
   const sidebarCities = isAfricaView ? africaCities : countryCities;
-  const validCountryYears = sidebarStudies
+  const selectionStudies = selectedCityName
+    ? selectedCityStudies
+    : sidebarStudies;
+  const validCountryYears = selectionStudies
     .flatMap((study) => [study.yearFrom, study.yearTo])
     .filter((year): year is number => year !== null && year > 0);
   const countryYearFrom =
@@ -990,7 +1010,9 @@ export default function App() {
   const searchTerm = searchQuery.trim().toLowerCase();
   const matchesStudySearch = (study: Study) =>
     !searchTerm ||
-    `${study.title} ${study.author} ${study.source}`.toLowerCase().includes(searchTerm);
+    `${study.title} ${study.author} ${study.source}`
+      .toLowerCase()
+      .includes(searchTerm);
   const visibleAfricaCountries = africaCountrySummaries.filter(
     (country) =>
       !searchTerm ||
@@ -1004,15 +1026,13 @@ export default function App() {
         city.name.toLowerCase().includes(searchTerm) ||
         city.studies.some((summary) =>
           countryStudies.some(
-            (study) =>
-              study.id === summary.id && matchesStudySearch(study),
+            (study) => study.id === summary.id && matchesStudySearch(study),
           ),
         ),
     )
     .sort(
       (a, b) => b.studyCount - a.studyCount || a.name.localeCompare(b.name),
     );
-  const visibleCityStudies = selectedCityStudies.filter(matchesStudySearch);
   const maxCountryStudyCount = Math.max(
     1,
     ...africaCountrySummaries.map((country) => country.studyCount),
@@ -1021,22 +1041,6 @@ export default function App() {
     1,
     ...countryCities.map((city) => city.studyCount),
   );
-  const cityCategoryTags = (study: Study) => {
-    const pollutants = categoriesData?.flatMap((group) => group.pollutants) ?? [];
-    const keys = new Set(
-      study.records.flatMap((record) => Object.keys(record.measurements)),
-    );
-    return [
-      ...new Set(
-        [...keys]
-          .map(
-            (key) =>
-              pollutants.find((pollutant) => pollutant.key === key)?.category,
-          )
-          .filter((category): category is string => Boolean(category)),
-      ),
-    ];
-  };
   const visibleMapCities =
     countrySummariesData
       ?.flatMap((c) => c.areas)
@@ -1301,9 +1305,7 @@ export default function App() {
           setSelectedCountryId(countryId);
           setSelectedCountryName(leadCity.country);
         }
-        setSelectedCityName(
-          cluster.cities.length === 1 ? leadCity.name : null,
-        );
+        setSelectedCityName(cluster.cities.length === 1 ? leadCity.name : null);
 
         // Open the city in the sidebar.
         setExpanded((prev) => {
@@ -1365,9 +1367,7 @@ export default function App() {
         (item) =>
           normalizeCountryId(
             (item as L.Layer & { feature?: GeoJSON.Feature }).feature?.id as
-              | string
-              | number
-              | undefined,
+              string | number | undefined,
           ) === country.topoId,
       );
     if (!(countryLayer instanceof L.Polygon)) return;
@@ -1609,7 +1609,6 @@ export default function App() {
       >
         {page === "home" ? (
           <HomePage
-            stats={stats}
             onGoHome={() => navigateToPage("home")}
             onExploreMap={() => navigateToPage("map")}
             onBrowseResearch={() => navigateToPage("search")}
@@ -2129,28 +2128,14 @@ export default function App() {
               {!isCardOnlyResearchTab && (
                 <div className="map-selection-panel">
                   <div className="map-selection-header">
-                    <div className="map-selection-overline">
-                      <span className="map-selection-indicator" />
-                      <span>
-                        {selectedMapStudy
-                          ? "Study record"
-                          : selectedCityName
-                            ? "City research"
-                            : isAfricaView
-                              ? "Continental overview"
-                              : "Country coverage"}
-                      </span>
-                      <span className="map-selection-context">
-                        {selectedMapStudy
-                          ? "FIELD METHODS"
-                          : selectedCityName
-                            ? "CITY LEVEL"
-                            : isAfricaView
-                              ? "AFRICA"
-                              : "COUNTRY LEVEL"}
-                      </span>
-                    </div>
-                    <h2 className="map-selection-title">
+                    
+                    <h2 className="map-selection-title flex items-center gap-2">
+                      {!selectedMapStudy &&
+                        !selectedCityName &&
+                        !isAfricaView &&
+                        selectedCountryName && (
+                          <CountryFlag country={selectedCountryName} />
+                        )}
                       {selectedMapStudy
                         ? "Study details"
                         : selectedCityName
@@ -2159,18 +2144,11 @@ export default function App() {
                             ? "Air research across Africa"
                             : selectedCountryName || "Country research"}
                     </h2>
-                    <p className="map-selection-subtitle">
-                      {selectedMapStudy
-                        ? "Publication, sampling context and measured pollutants."
-                        : selectedCityName
-                          ? `${selectedCountryName} · studies recorded in this city`
-                          : isAfricaView
-                            ? "Explore field studies by country, then follow the evidence to a city or study."
-                            : "Study coverage and mapped research locations in this country."}
-                    </p>
+
                     <nav
                       aria-label="Map navigation"
                       className="map-selection-breadcrumb"
+                      hidden={isAfricaView}
                     >
                       <button
                         type="button"
@@ -2188,20 +2166,27 @@ export default function App() {
                             onClick={() => {
                               setSelectedCityName(null);
                               setSelectedMapStudy(null);
-                              if (selectedCountry) zoomToCountry(selectedCountry);
+                              if (selectedCountry)
+                                zoomToCountry(selectedCountry);
                             }}
                             aria-current={
-                              !isAfricaView && !selectedCityName && !selectedMapStudy
+                              !isAfricaView &&
+                              !selectedCityName &&
+                              !selectedMapStudy
                                 ? "page"
                                 : undefined
                             }
                             className={
-                              !isAfricaView && !selectedCityName && !selectedMapStudy
+                              !isAfricaView &&
+                              !selectedCityName &&
+                              !selectedMapStudy
                                 ? "is-current"
                                 : ""
                             }
                           >
-                            {selectedCountryName}
+                            <span className="inline-flex items-center gap-2">
+                              {selectedCountryName}
+                            </span>
                           </button>
                         </>
                       )}
@@ -2214,21 +2199,16 @@ export default function App() {
                               setSelectedMapStudy(null);
                               if (selectedCity) zoomToCity(selectedCity);
                             }}
-                            aria-current={!selectedMapStudy ? "page" : undefined}
+                            aria-current={
+                              !selectedMapStudy ? "page" : undefined
+                            }
                             className={!selectedMapStudy ? "is-current" : ""}
                           >
                             {selectedCityName}
                           </button>
                         </>
                       )}
-                      {selectedMapStudy && (
-                        <>
-                          <ChevronRight size={13} aria-hidden="true" />
-                          <span aria-current="page" className="is-current">
-                            Study
-                          </span>
-                        </>
-                      )}
+                      {selectedMapStudy && <></>}
                     </nav>
                     {!isAfricaView && (
                       <div className="map-selection-backline">
@@ -2247,17 +2227,75 @@ export default function App() {
                             ? `Back to ${selectedCityName || "city"}`
                             : "Back to Africa"}
                         </button>
-                        <span>
-                          {selectedMapStudy ? "RECORD DETAIL" : "GEOGRAPHIC VIEW"}
-                        </span>
                       </div>
                     )}
+                  </div>
+
+                  <div
+                    className="map-selection-stats"
+                    aria-label="Selection summary"
+                  >
+                    {[
+                      {
+                        val: selectedMapStudy
+                          ? "1"
+                          : selectedCityName
+                            ? String(selectedCityStudies.length)
+                            : isFiltering
+                              ? isAfricaView
+                                ? String(sidebarStudyCount)
+                                : `${sidebarStudyCount}/${selectedCountry?.totalStudyCount ?? selectedCountry?.studyCount ?? 0}`
+                              : String(sidebarStudyCount),
+                        label: selectedMapStudy
+                          ? "Study"
+                          : selectedCityName
+                            ? selectedCityStudies.length === 1
+                              ? "Study"
+                              : "Studies"
+                            : sidebarStudyCount === 1
+                              ? "Study"
+                              : "Studies",
+                      },
+                      {
+                        val: String(
+                          selectedMapStudy
+                            ? selectedMapStudyMethodologyCount
+                            : isAfricaView
+                              ? visibleAfricaCountries.length
+                              : selectedCityName
+                                ? selectedCityPollutantCount
+                                : visibleCountryCities.length,
+                        ),
+                        label: selectedMapStudy
+                          ? "Methodologies"
+                          : isAfricaView
+                            ? "Countries"
+                            : selectedCityName
+                              ? "Pollutants"
+                              : "Cities",
+                      },
+                      {
+                        val: selectedMapStudy
+                          ? selectedMapStudyYearRange
+                          : sidebarYearRange,
+                        label: "Study years",
+                      },
+                    ].map((stat) => (
+                      <div key={stat.label} className="map-selection-stat">
+                        <span>{stat.val}</span>
+                        <small style={{ fontSize: "14px" }}>
+                          {stat.label}
+                        </small>{" "}
+                      </div>
+                    ))}
                   </div>
 
                   {selectedMapStudy ? (
                     <div className="map-selection-scroll map-study-detail">
                       <section className="map-study-publication">
-                        <div className="map-section-label">Selected publication</div>
+                        <div className="map-section-label">
+                          Selected publication
+                        </div>
                         <h3>
                           {selectedMapStudy.title ||
                             selectedMapStudy.source ||
@@ -2288,15 +2326,9 @@ export default function App() {
                       <section className="map-study-record-section">
                         <div className="map-study-section-heading">
                           <div>
-                            <span className="map-section-label">Study record</span>
-                            <h3>Methods &amp; measurements</h3>
+                            <h3>Methodologies &amp; measurements</h3>
                           </div>
-                          <span className="map-study-record-count">
-                            {selectedMapStudy.records.length}{" "}
-                            {selectedMapStudy.records.length === 1
-                              ? "record"
-                              : "records"}
-                          </span>
+                          
                         </div>
                         <div className="map-study-records">
                           {selectedMapStudy.records.map((record, index) => {
@@ -2318,21 +2350,27 @@ export default function App() {
                                     </h4>
                                   </div>
                                   <span className="map-method-index">
-                                    {index + 1} / {selectedMapStudy.records.length}
+                                    {index + 1} /{" "}
+                                    {selectedMapStudy.records.length}
                                   </span>
                                 </div>
                                 <dl className="map-study-facts">
                                   <div>
                                     <dt>Location</dt>
                                     <dd>
-                                      {[record.studyArea, selectedMapStudy.country]
+                                      {[
+                                        record.studyArea,
+                                        selectedMapStudy.country,
+                                      ]
                                         .filter(Boolean)
                                         .join(", ") || "Not specified"}
                                     </dd>
                                   </div>
                                   <div>
                                     <dt>Sampling period</dt>
-                                    <dd>{record.samplingPeriod || "Not specified"}</dd>
+                                    <dd>
+                                      {record.samplingPeriod || "Not specified"}
+                                    </dd>
                                   </div>
                                   {(selectedMapStudy.yearFrom ||
                                     selectedMapStudy.yearTo) && (
@@ -2349,13 +2387,18 @@ export default function App() {
                                     </div>
                                   )}
                                 </dl>
-                                {record.methodology && (
+                                {record.methodology ? (
                                   <div className="map-method-description">
                                     <span className="map-section-label">
                                       Method
                                     </span>
                                     <p>{record.methodology}</p>
                                   </div>
+                                ) : (
+                                  <p className="map-study-description">
+                                    Methodology details are not specified for
+                                    this record.
+                                  </p>
                                 )}
                                 {record.description && (
                                   <p className="map-study-description">
@@ -2372,7 +2415,8 @@ export default function App() {
                                         const item = categoriesData
                                           ?.flatMap((group) => group.pollutants)
                                           .find(
-                                            (pollutant) => pollutant.key === key,
+                                            (pollutant) =>
+                                              pollutant.key === key,
                                           );
                                         return (
                                           <span key={key}>
@@ -2391,47 +2435,6 @@ export default function App() {
                     </div>
                   ) : (
                     <>
-                      <div
-                        className="map-selection-stats"
-                        aria-label="Coverage summary"
-                      >
-                        {[
-                          {
-                            val: isFiltering
-                              ? isAfricaView
-                                ? String(sidebarStudyCount)
-                                : `${sidebarStudyCount}/${selectedCountry?.totalStudyCount ?? selectedCountry?.studyCount ?? 0}`
-                              : String(sidebarStudyCount),
-                            label:
-                              sidebarStudyCount === 1 ? "Study" : "Studies",
-                          },
-                          {
-                            val: String(
-                              isAfricaView
-                                ? visibleAfricaCountries.length
-                                : selectedCityName
-                                  ? selectedCityStudies.reduce(
-                                      (total, study) =>
-                                        total + study.records.length,
-                                      0,
-                                    )
-                                  : visibleCountryCities.length,
-                            ),
-                            label: isAfricaView
-                              ? "Countries"
-                              : selectedCityName
-                                ? "Methodologies"
-                                : "Cities",
-                          },
-                          { val: sidebarYearRange, label: "Study years" },
-                        ].map((stat) => (
-                          <div key={stat.label} className="map-selection-stat">
-                            <span>{stat.val}</span>
-                            <small>{stat.label}</small>
-                          </div>
-                        ))}
-                      </div>
-
                       {searchQuery && (
                         <div className="map-search-status" role="status">
                           Results refined by{" "}
@@ -2471,23 +2474,6 @@ export default function App() {
                         </div>
                       </div>
 
-                      <div className="map-selection-list-heading">
-                        <span>
-                          {isAfricaView
-                            ? "Country coverage"
-                            : selectedCityName
-                              ? "Studies in this city"
-                              : "Cities in this country"}
-                        </span>
-                        <span>
-                          {isAfricaView
-                            ? `${visibleAfricaCountries.length} results`
-                            : selectedCityName
-                              ? `${visibleCityStudies.length} results`
-                              : `${visibleCountryCities.length} results`}
-                        </span>
-                      </div>
-
                       <div className="map-selection-scroll map-selection-list">
                         {isAfricaView && (
                           <div className="map-selection-rows">
@@ -2497,7 +2483,8 @@ export default function App() {
                               );
                               const density = Math.max(
                                 4,
-                                (country.studyCount / maxCountryStudyCount) * 100,
+                                (country.studyCount / maxCountryStudyCount) *
+                                  100,
                               );
                               return (
                                 <button
@@ -2528,7 +2515,9 @@ export default function App() {
                                   <span className="map-row-meta">
                                     <span>
                                       {country.cityCount} mapped{" "}
-                                      {country.cityCount === 1 ? "city" : "cities"}
+                                      {country.cityCount === 1
+                                        ? "city"
+                                        : "cities"}
                                     </span>
                                     <span
                                       className="map-density"
@@ -2544,54 +2533,14 @@ export default function App() {
                               <div className="map-selection-empty">
                                 <Search size={18} aria-hidden="true" />
                                 <strong>No countries match</strong>
-                                <p>Try another place name or clear your search.</p>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                        {!isAfricaView && selectedCityName && (
-                          <div className="map-selection-rows">
-                            {visibleCityStudies.map((study) => {
-                              const tags = cityCategoryTags(study);
-                              const year =
-                                study.publicationYear ?? study.yearFrom;
-                              return (
-                                <button
-                                  key={study.id}
-                                  type="button"
-                                  onClick={() => openMapStudy(study)}
-                                  className="map-study-row"
-                                >
-                                  <span className="map-study-row-title">
-                                    {study.title || study.source}
-                                  </span>
-                                  <span className="map-study-row-meta">
-                                    {study.author || study.source}
-                                    {year ? ` · ${year}` : ""}
-                                  </span>
-                                  {tags.length > 0 && (
-                                    <span className="map-study-row-tags">
-                                      {tags.map((tag) => (
-                                        <span key={tag}>{tag}</span>
-                                      ))}
-                                    </span>
-                                  )}
-                                </button>
-                              );
-                            })}
-                            {visibleCityStudies.length === 0 && (
-                              <div className="map-selection-empty">
-                                <Search size={18} aria-hidden="true" />
-                                <strong>No studies match</strong>
                                 <p>
-                                  Try a different title, author, or clear your
-                                  search.
+                                  Try another place name or clear your search.
                                 </p>
                               </div>
                             )}
                           </div>
                         )}
-                        {!isAfricaView && !selectedCityName && (
+                        {!isAfricaView && (
                           <>
                             {sidebarStudyCount === 0 && (
                               <div className="map-selection-empty">
@@ -2634,10 +2583,6 @@ export default function App() {
                                       </span>
                                       <span className="map-city-copy">
                                         <strong>{city.name}</strong>
-                                        <small>
-                                          {city.settings?.join(", ") ||
-                                            "Study location"}
-                                        </small>
                                       </span>
                                       <span className="map-city-count">
                                         {city.studyCount}{" "}
@@ -2696,20 +2641,6 @@ export default function App() {
                                                   {s.title || s.source}
                                                 </strong>
                                                 <span>{s.source}</span>
-                                                {pNames.length > 0 && (
-                                                  <span className="map-study-row-tags">
-                                                    {pNames.map((name) => (
-                                                      <span key={name}>
-                                                        {name}
-                                                      </span>
-                                                    ))}
-                                                    {pKeys.size > 3 && (
-                                                      <span>
-                                                        +{pKeys.size - 3}
-                                                      </span>
-                                                    )}
-                                                  </span>
-                                                )}
                                               </button>
                                             );
                                           })}

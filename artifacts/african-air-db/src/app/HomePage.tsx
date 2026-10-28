@@ -10,12 +10,15 @@ import {
   Database,
   ArrowRight,
   Calendar,
+  MapPin,
+  Users,
+  Newspaper,
+  BookOpen,
 } from "lucide-react";
-import type { DatasetStats } from "./types/arcair";
 import { useAsync } from "./hooks/useData";
 import {
   getCountrySummaries,
-  getPublicStatisticsCounts,
+  getPublicStatistics,
 } from "./services/studyService";
 import AnalyticsCharts from "./components/AnalyticsCharts";
 import { feature, merge } from "topojson-client";
@@ -31,7 +34,6 @@ import team_najoua from "../assets/team-najoua.jpg";
 import team_mohamed from "../assets/team-mohamed.jpg";
 
 interface HomePageProps {
-  stats: DatasetStats | null;
   onGoHome: () => void;
   onExploreMap: () => void;
   onBrowseResearch: () => void;
@@ -77,22 +79,29 @@ function useCountUp(end: number | undefined, duration: number = 1000) {
 }
 
 export default function HomePage({
-  stats,
   onGoHome,
   onExploreMap,
   onBrowseResearch,
   onAdmin,
 }: HomePageProps) {
-  const { data: publicStatisticsCounts, error: publicStatisticsCountsError } =
-    useAsync(getPublicStatisticsCounts, []);
-  const totalMeasurements = useCountUp(
-    publicStatisticsCounts?.totalMeasurements,
+  const { data: publicStatistics, error: publicStatisticsError } = useAsync(
+    getPublicStatistics,
+    [],
   );
-  const totalVariables = useCountUp(publicStatisticsCounts?.totalVariables);
-  const yearRange =
-    stats?.yearFrom && stats?.yearTo
-      ? `${stats.yearFrom}-${stats.yearTo}`
-      : "N/A";
+  const totalStudies = useCountUp(publicStatistics?.totalStudies);
+  const totalMeasurements = useCountUp(publicStatistics?.totalMeasurements);
+  const totalCountries = useCountUp(publicStatistics?.totalCountries);
+  const totalVariables = useCountUp(publicStatistics?.totalVariables);
+  const totalStudyAreas = useCountUp(publicStatistics?.totalStudyAreas);
+  const totalAuthors = useCountUp(publicStatistics?.totalAuthors);
+  const totalArticles = useCountUp(publicStatistics?.totalArticles);
+  const totalJournals = useCountUp(publicStatistics?.totalJournals);
+  const yearRange = publicStatistics
+    ? `${publicStatistics.yearRange.min}-${publicStatistics.yearRange.max}`
+    : publicStatisticsError
+      ? "N/A"
+      : "-";
+  const unavailableValue = publicStatisticsError ? "N/A" : undefined;
 
   return (
     <div className="flex-1 overflow-y-auto bg-background w-full relative scroll-smooth">
@@ -138,29 +147,33 @@ export default function HomePage({
 
         {/* Statistics Section */}
         <section className="animate-in fade-in duration-700 delay-150 slide-in-from-bottom-4 fill-mode-both">
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4">
             <StatCard
               icon={FileText}
               label="Total Studies"
-              value={useCountUp(stats?.studyCount)}
+              value={publicStatistics ? totalStudies : undefined}
+              staticValue={unavailableValue}
             />
             <StatCard
               icon={Database}
               label="Total Measurements"
-              value={publicStatisticsCounts ? totalMeasurements : undefined}
-              staticValue={publicStatisticsCountsError ? "N/A" : undefined}
+              value={publicStatistics ? totalMeasurements : undefined}
+              staticValue={unavailableValue}
             />
             <StatCard
               icon={Globe2}
               label="Countries Covered"
-              value={useCountUp(stats?.countryCount)}
+              value={publicStatistics ? totalCountries : undefined}
+              staticValue={unavailableValue}
             />
             <StatCard
               icon={FlaskConical}
               label="Monitored Parameters"
-              value={publicStatisticsCounts ? totalVariables : undefined}
-              staticValue={publicStatisticsCountsError ? "N/A" : undefined}
+              value={publicStatistics ? totalVariables : undefined}
+              staticValue={unavailableValue}
             />
+           
+           
             <StatCard
               icon={Calendar}
               label="Sampling Period"
