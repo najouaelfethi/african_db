@@ -1,5 +1,5 @@
 /*
- * Observatories, monitoring networks and field campaigns in Africa — interactive map
+ * Observatories, monitoring networks and field campaigns in Africa interactive map
  * Requires D3 v7 (loaded before this file). Data is loaded from the /data folder.
  */
 const MAP_CONFIG = {

@@ -324,17 +324,17 @@
 .map-selection-title {
   margin: 8px 0 0;
   color: var(--map-ink);
-  font-size: 24px;
-  font-weight: 750;
+  font-size: 28px;
+  font-weight: 800;
   letter-spacing: -0.035em;
-  line-height: 1.15;
+  line-height: 1.1;
   overflow-wrap: anywhere;
 }
 
 .map-selection-subtitle {
   margin: 5px 0 0;
   color: var(--map-muted);
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.45;
 }
 
@@ -460,7 +460,7 @@
   display: block;
   margin-top: 4px;
   color: #647891;
-  font-size: 9px;
+  font-size: 10px;
   line-height: 1.2;
 }
 
@@ -579,6 +579,8 @@
   flex: 1 1 auto;
   overflow-y: auto;
   overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
   scrollbar-color: #b9c9dc transparent;
   scrollbar-width: thin;
 }
@@ -629,8 +631,8 @@
 .map-row-title {
   overflow: hidden;
   color: #213955;
-  font-size: 12px;
-  font-weight: 700;
+  font-size: 14px;
+  font-weight: 750;
   letter-spacing: -0.01em;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -726,8 +728,8 @@
 
 .map-city-copy strong {
   color: #213955;
-  font-size: 15px;
-  font-weight: 700;
+  font-size: 16px;
+  font-weight: 750;
 }
 
 .map-city-copy small {
@@ -791,7 +793,8 @@
 .map-city-study > span:not(.map-study-row-tags) {
   display: block;
   color: #263e5b;
-  font-size: 10px;
+  font-size: 12px;
+  font-weight: 650;
   line-height: 1.4;
 }
 
@@ -804,16 +807,16 @@
 .map-study-row-title {
   display: block;
   color: #203a59;
-  font-size: 15px;
-  font-weight: 700;
-  line-height: 1.35;
+  font-size: 17px;
+  font-weight: 750;
+  line-height: 1.3;
 }
 
 .map-study-row-meta {
   display: block;
   margin-top: 5px;
   color: #657991;
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.35;
 }
 
@@ -897,9 +900,9 @@
 .map-study-publication h3 {
   margin: 7px 0 0;
   color: #1d3551;
-  font-size: 15px;
-  font-weight: 700;
-  line-height: 1.28;
+  font-size: 18px;
+  font-weight: 750;
+  line-height: 1.25;
   letter-spacing: -0.02em;
 }
 
@@ -956,8 +959,8 @@
 .map-study-section-heading h3 {
   margin: 3px 0 0;
   color: #263e5b;
-  font-size: 13px;
-  font-weight: 700;
+  font-size: 15px;
+  font-weight: 750;
 }
 
 .map-study-record-count,
@@ -991,8 +994,8 @@
 .map-method-card-head h4 {
   margin: 4px 0 0;
   color: #243c59;
-  font-size: 12px;
-  font-weight: 700;
+  font-size: 14px;
+  font-weight: 750;
   line-height: 1.35;
 }
 
@@ -1087,7 +1090,10 @@
   }
 
   .map-selection-panel {
-    min-height: 38dvh;
+    height: 45dvh;
+    min-height: 45dvh;
+    max-height: 45dvh;
+    flex: 0 0 45dvh;
   }
 
   .map-selection-header {
@@ -1095,7 +1101,7 @@
   }
 
   .map-selection-title {
-    font-size: 19px;
+    font-size: 22px;
     margin-top: 7px;
   }
 

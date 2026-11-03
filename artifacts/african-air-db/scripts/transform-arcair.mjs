@@ -66,14 +66,11 @@ const TAIL_START = 217; // Data processing, Author, Journal, Identifier, Title
 // Keys are category names with any parenthetical unit stripped (the raw
 // export contains mojibake in the unit part, e.g. "(?g m-3)").
 const CATEGORY_LABELS = {
-  "Bulk PM": { label: "Bulk PM", unit: "µg/m³" },
-  "Carbonaceous aerosols": { label: "Carbonaceous aerosols", unit: "µg/m³" },
-  "Water soluble inorganic aerosols": {
-    label: "Water soluble inorganic aerosols",
-    unit: "µg/m³",
-  },
-  "Trace metals": { label: "Trace metals", unit: "ng/m³" },
-  "Atmosphreric Gases": { label: "Atmospheric gases", unit: "ppb" },
+  "Bulk PM": { label: "Bulk PM" },
+  "Carbonaceous aerosols": { label: "Carbonaceous aerosols" },
+  "Water soluble inorganic aerosols": { label: "Water soluble inorganic aerosols" },
+  "Trace metals": { label: "Trace metals"},
+  "Atmosphreric Gases": { label: "Atmospheric gases" },
 };
 
 const pollutants = [];

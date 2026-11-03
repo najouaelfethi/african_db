@@ -75,7 +75,7 @@ const makeStudy = (
   records: [
     {
       studyArea,
-      samplingPeriod: `${yearFrom}–${yearTo}`,
+      samplingPeriod: `${yearFrom}-${yearTo}`,
       methodology:
         "Particulate matter was monitored at representative roadside and urban background sites using calibrated optical and gravimetric instruments.",
       description:
@@ -782,7 +782,7 @@ export function Redesigned() {
                   <div className="air-stat-label">{isAfrica ? "Countries" : isCity ? "Methods" : "Cities"}</div>
                 </div>
                 <div className="air-stat">
-                  <div className="air-stat-value">{isAfrica ? "1998–24" : "2015–23"}</div>
+                  <div className="air-stat-value">{isAfrica ? "1998-24" : "2015-23"}</div>
                   <div className="air-stat-label">Study years</div>
                 </div>
               </div>
@@ -917,7 +917,7 @@ export function Redesigned() {
                 <div className="air-detail-facts">
                   <div className="air-fact">
                     <label>Study years</label>
-                    <span>{selectedStudy.yearFrom}–{selectedStudy.yearTo}</span>
+                    <span>{selectedStudy.yearFrom}-{selectedStudy.yearTo}</span>
                   </div>
                   <div className="air-fact">
                     <label>Sampling period</label>

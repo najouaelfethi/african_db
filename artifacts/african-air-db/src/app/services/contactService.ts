@@ -1,6 +1,5 @@
 import { apiUrl } from "./apiUrl";
 
-export type ContactRequestStatus = "Pending" | "Valid" | "Disapproved";
 export type ContactRequestType =
   | "General inquiry"
   | "Collaboration request"
@@ -17,66 +16,36 @@ export interface ContactRequestPayload {
   details?: string;
 }
 
-export interface ContactRequestRecord extends ContactRequestPayload {
-  id: number;
-  status: ContactRequestStatus;
-  createdAt: string;
-  updatedAt: string;
-}
-
-async function parseJson<T>(response: Response): Promise<T> {
-  if (!response.ok) {
-    let message = `Request failed with status ${response.status}`;
-    try {
-      const body = (await response.json()) as { message?: string };
-      if (body?.message) {
-        message = body.message;
-      }
-    } catch {
-      // Ignore JSON parse failures and keep the fallback message.
+async function errorMessage(response: Response): Promise<string> {
+  try {
+    const body = (await response.json()) as { detail?: unknown };
+    if (typeof body.detail === "string") return body.detail;
+    if (Array.isArray(body.detail)) {
+      const first = body.detail[0] as { msg?: string } | undefined;
+      if (first?.msg) return first.msg;
     }
-    throw new Error(message);
+  } catch {
+    // Non-JSON error body: use the status fallback below.
   }
-
-  return (await response.json()) as T;
+  return `Request failed with status ${response.status}`;
 }
 
 export async function submitContactRequest(
   payload: ContactRequestPayload,
-): Promise<ContactRequestRecord> {
+): Promise<{ id: string; status: string }> {
   const response = await fetch(apiUrl("/api/v1/contact-requests"), {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      full_name: payload.fullName,
+      email: payload.email,
+      institution: payload.institution,
+      request_type: payload.requestType,
+      subject: payload.subject,
+      message: payload.message,
+      details: payload.details || null,
+    }),
   });
-
-  return parseJson<ContactRequestRecord>(response);
-}
-
-export async function getContactRequests(): Promise<ContactRequestRecord[]> {
-  const response = await fetch(apiUrl("/api/v1/contact-requests"), {
-    method: "GET",
-    headers: {
-      Accept: "application/json",
-    },
-  });
-
-  return parseJson<ContactRequestRecord[]>(response);
-}
-
-export async function updateContactRequestStatus(
-  id: number,
-  status: ContactRequestStatus,
-): Promise<ContactRequestRecord> {
-  const response = await fetch(apiUrl(`/api/v1/contact-requests/${id}/status`), {
-    method: "PATCH",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ status }),
-  });
-
-  return parseJson<ContactRequestRecord>(response);
+  if (!response.ok) throw new Error(await errorMessage(response));
+  return (await response.json()) as { id: string; status: string };
 }

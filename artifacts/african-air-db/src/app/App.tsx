@@ -42,6 +42,14 @@ import type {
   PollutantInfo,
 } from "./types/arcair";
 import { useAsync } from "./hooks/useData";
+import {
+  getCurrentUser,
+  hasSession,
+  login,
+  logout,
+  register,
+  resendVerification,
+} from "./services/authService";
 import SearchPage from "./SearchPage";
 import StudyDetailPage from "./StudyDetailPage";
 import HomePage from "./HomePage";
@@ -165,14 +173,6 @@ const ADMIN_FAKE_ALERTS = [
     level: "critical",
   },
 ];
-
-// Auth: accept @um6p.ma emails or the legacy admin account.
-const ADMIN_AUTH = {
-  username: "admin",
-  password: "admin123",
-};
-const isUM6PEmail = (v: string) => v.trim().toLowerCase().endsWith("@um6p.ma");
-const UM6P_PASSWORD = "um6p2024";
 
 const AFRICA_COUNTRY_IDS = new Set([
   "012",
@@ -605,6 +605,10 @@ export default function App() {
   const [adminUsername, setAdminUsername] = useState("");
   const [adminPassword, setAdminPassword] = useState("");
   const [authError, setAuthError] = useState("");
+  const [authNotice, setAuthNotice] = useState("");
+  const [authBusy, setAuthBusy] = useState(false);
+  const [authMode, setAuthMode] = useState<"login" | "register">("login");
+  const [authFullName, setAuthFullName] = useState("");
   const choroplethModeRef = useRef(choroplethMode);
 
   useEffect(() => {
@@ -1076,31 +1080,89 @@ export default function App() {
     pushInternalPage(id);
   };
 
-  const handleAdminLogin = () => {
-    const isLegacy =
-      adminUsername.trim() === ADMIN_AUTH.username &&
-      adminPassword === ADMIN_AUTH.password;
-    const isUM6P =
-      isUM6PEmail(adminUsername) && adminPassword === UM6P_PASSWORD;
-    if (isLegacy || isUM6P) {
-      setIsAdminAuthenticated(true);
+  // Restore a session saved earlier in this browser tab.
+  useEffect(() => {
+    if (!hasSession()) return;
+    getCurrentUser()
+      .then((user) => {
+        setAdminUsername(user.email);
+        setIsAdminAuthenticated(true);
+      })
+      .catch(() => {});
+  }, []);
+
+  const handleAdminLogin = async () => {
+    const email = adminUsername.trim();
+    if (!email || !adminPassword) {
+      setAuthError("Enter your email and password.");
+      return;
+    }
+    // TEMPORARY local-only shortcut; stripped from production builds. Remove once real admin accounts exist.
+    if (
+      import.meta.env.DEV &&
+      authMode === "login" &&
+      email === "admin" &&
+      adminPassword === "admin123"
+    ) {
       setAuthError("");
+      setAuthNotice("");
+      setAdminUsername(email);
+      setIsAdminAuthenticated(true);
       setAdminPassword("");
       setPage("admin");
-    } else {
+      return;
+    }
+    setAuthBusy(true);
+    setAuthError("");
+    setAuthNotice("");
+    try {
+      if (authMode === "register") {
+        await register(email, adminPassword, authFullName.trim() || undefined);
+        setAuthMode("login");
+        setAdminPassword("");
+        setAuthNotice(
+          "Account created. Check your email to verify it, then sign in.",
+        );
+      } else {
+        const user = await login(email, adminPassword);
+        setAdminUsername(user.email || email);
+        setIsAdminAuthenticated(true);
+        setAdminPassword("");
+        setPage("admin");
+      }
+    } catch (error) {
       setAuthError(
-        isUM6PEmail(adminUsername)
-          ? "Incorrect password for this UM6P account."
-          : "Use your @um6p.ma email or the admin account.",
+        error instanceof Error ? error.message : "Authentication failed.",
+      );
+    } finally {
+      setAuthBusy(false);
+    }
+  };
+
+  const handleResendVerification = async () => {
+    const email = adminUsername.trim();
+    if (!email) {
+      setAuthError("Enter your email first.");
+      return;
+    }
+    try {
+      await resendVerification(email);
+      setAuthError("");
+      setAuthNotice("Verification email sent.");
+    } catch (error) {
+      setAuthError(
+        error instanceof Error ? error.message : "Could not send the email.",
       );
     }
   };
 
   const handleAdminLogout = () => {
+    void logout();
     setIsAdminAuthenticated(false);
     setAdminUsername("");
     setAdminPassword("");
     setAuthError("");
+    setAuthNotice("");
     setPage("map");
   };
 
@@ -1652,26 +1714,36 @@ export default function App() {
                   </span>
                 </div>
                 <h1 className="text-2xl font-semibold text-foreground">
-                  Sign in
+                  {authMode === "register" ? "Create account" : "Sign in"}
                 </h1>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  Use your{" "}
-                  <span className="font-semibold text-foreground">
-                    @um6p.ma
-                  </span>{" "}
-                  email to access the admin dashboard.
+                  {authMode === "register"
+                    ? "Register with your email to request access."
+                    : "Sign in to access the admin dashboard."}
                 </p>
               </div>
 
               <div className="space-y-4">
+                {authMode === "register" && (
+                  <label className="block text-[11px] font-medium text-foreground">
+                    Full name
+                    <input
+                      type="text"
+                      value={authFullName}
+                      onChange={(e) => setAuthFullName(e.target.value)}
+                      className="mt-2 w-full rounded-2xl border border-border bg-background px-4 py-3 text-sm text-foreground outline-none transition focus:border-primary/70 focus:ring-2 focus:ring-primary/10"
+                      autoComplete="name"
+                    />
+                  </label>
+                )}
                 <label className="block text-[11px] font-medium text-foreground">
-                  UM6P Email
+                  Email
                   <input
                     type="email"
                     value={adminUsername}
                     onChange={(e) => setAdminUsername(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleAdminLogin()}
-                    placeholder="firstname.lastname@um6p.ma"
+                    placeholder="name@example.com"
                     className="mt-2 w-full rounded-2xl border border-border bg-background px-4 py-3 text-sm text-foreground outline-none transition focus:border-primary/70 focus:ring-2 focus:ring-primary/10"
                     autoComplete="email"
                   />
@@ -1684,36 +1756,45 @@ export default function App() {
                     onChange={(e) => setAdminPassword(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleAdminLogin()}
                     className="mt-2 w-full rounded-2xl border border-border bg-background px-4 py-3 text-sm text-foreground outline-none transition focus:border-primary/70 focus:ring-2 focus:ring-primary/10"
-                    autoComplete="current-password"
+                    autoComplete={
+                      authMode === "register"
+                        ? "new-password"
+                        : "current-password"
+                    }
                   />
                 </label>
               </div>
 
               {authError && (
-                <p className="mt-4 text-sm text-destructive">{authError}</p>
+                <p role="alert" className="mt-4 text-sm text-destructive">
+                  {authError}
+                </p>
+              )}
+              {authNotice && (
+                <p role="status" className="mt-4 text-sm text-emerald-700">
+                  {authNotice}
+                </p>
               )}
 
               <button
                 onClick={handleAdminLogin}
-                className="mt-6 w-full rounded-2xl bg-primary px-4 py-3 text-sm font-semibold text-white transition hover:bg-primary/90"
+                disabled={authBusy}
+                className="mt-6 w-full rounded-2xl bg-primary px-4 py-3 text-sm font-semibold text-white transition hover:bg-primary/90 disabled:opacity-60"
               >
-                Sign in with UM6P
+                {authBusy
+                  ? "Please wait…"
+                  : authMode === "register"
+                    ? "Create account"
+                    : "Sign in"}
               </button>
 
-              <div className="mt-5 rounded-2xl bg-muted/40 px-4 py-3 text-[11px] text-muted-foreground space-y-1">
-                <div>
-                  {/* UM6P branding 
-                <span className="font-semibold text-foreground">Admin:</span>{" "}
-                <code>admin</code> · <code>admin123</code>
-                */}
-                </div>
-              </div>
+              
             </div>
           </div>
         ) : page === "admin" ? (
           <AdminDashboard
             onLogout={handleAdminLogout}
-            userEmail={adminUsername || ADMIN_AUTH.username}
+            userEmail={adminUsername}
           />
         ) : (
           <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
@@ -2381,7 +2462,7 @@ export default function App() {
                                         {selectedMapStudy.yearTo &&
                                         selectedMapStudy.yearTo !==
                                           selectedMapStudy.yearFrom
-                                          ? `–${selectedMapStudy.yearTo}`
+                                          ? `-${selectedMapStudy.yearTo}`
                                           : ""}
                                       </dd>
                                     </div>

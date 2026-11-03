@@ -1,7 +1,7 @@
 import path from "path";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
-import { defineConfig } from "vite";
+import { defineConfig, loadEnv } from "vite";
 
 const rawPort = process.env.PORT ?? "5173";
 
@@ -13,7 +13,11 @@ if (Number.isNaN(port) || port <= 0) {
 
 const basePath = process.env.BASE_PATH ?? "/";
 
-export default defineConfig({
+export default defineConfig(({ mode }) => {
+  const apiTarget =
+    loadEnv(mode, import.meta.dirname, "VITE_").VITE_API_BASE_URL ||
+    "http://localhost:8000";
+  return {
   base: basePath,
   plugins: [react({ jsxRuntime: "automatic" }), tailwindcss()],
   resolve: {
@@ -40,11 +44,15 @@ export default defineConfig({
     allowedHosts: true,
     proxy: {
       "/api/v1/public/statistics": {
-        target: "http://localhost:8000",
+        target: apiTarget,
+        changeOrigin: true,
+      },
+      "/auth": {
+        target: apiTarget,
         changeOrigin: true,
       },
       "/api": {
-        target: "https://arcairedbapp.ddns.net/",
+        target: apiTarget,
         changeOrigin: true,
       },
     },
@@ -57,4 +65,5 @@ export default defineConfig({
     host: "0.0.0.0",
     allowedHosts: true,
   },
+};
 });

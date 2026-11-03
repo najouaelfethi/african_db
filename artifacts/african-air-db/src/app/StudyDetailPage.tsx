@@ -138,7 +138,7 @@ export default function StudyDetailPage({ studyId, onBack, onNavigateToCountry }
               </div>
               <div className="text-sm text-foreground font-medium">
                 {study.yearFrom}
-                {study.yearTo && study.yearTo !== study.yearFrom ? `–${study.yearTo}` : ""}
+                {study.yearTo && study.yearTo !== study.yearFrom ? `-${study.yearTo}` : ""}
               </div>
               {settings.length > 0 && (
                 <div className="mt-2 flex flex-wrap gap-1">

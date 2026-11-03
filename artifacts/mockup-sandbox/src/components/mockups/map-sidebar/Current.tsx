@@ -68,7 +68,7 @@ const makeStudy = (
   records: [
     {
       studyArea,
-      samplingPeriod: `${yearFrom}–${yearTo}`,
+      samplingPeriod: `${yearFrom}-${yearTo}`,
       methodology:
         "Particulate matter was monitored at representative roadside and urban background sites using calibrated optical and gravimetric instruments.",
       description:
@@ -431,7 +431,7 @@ export function Current() {
                       ? ` · ${selectedMapStudy.yearFrom}${
                           selectedMapStudy.yearTo &&
                           selectedMapStudy.yearTo !== selectedMapStudy.yearFrom
-                            ? `–${selectedMapStudy.yearTo}`
+                            ? `-${selectedMapStudy.yearTo}`
                             : ""
                         }`
                       : ""}

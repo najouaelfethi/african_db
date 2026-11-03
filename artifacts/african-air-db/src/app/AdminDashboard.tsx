@@ -20,22 +20,24 @@ import {
   YAxis,
   CartesianGrid,
   Legend,
+  LabelList,
 } from "recharts";
 import {
   Activity,
   BarChart2,
   ChevronRight,
   Database,
-  Download,
   Filter,
   Globe,
   LogOut,
   Mail,
+  Pencil,
   Plus,
   RefreshCw,
   Search,
   Settings,
   Shield,
+  Trash2,
   Upload,
   Users,
   X,
@@ -45,22 +47,35 @@ import {
   BookOpen,
   MapPin,
   FlaskConical,
-  Building2,
   Award,
   Eye,
   ChevronDown,
 } from "lucide-react";
+import { queryStudies } from "./services/studyService";
 import {
-  getCountrySummaries,
-  getDatasetStats,
-  queryStudies,
-} from "./services/studyService";
-import { getMeasurementStatistics } from "./services/analyticsService";
+  createStudy,
+  deleteStudy,
+  emptyMeasurement,
+  emptyMethodology,
+  getStudyPlaces,
+  getStudyDetail,
+  getVariables,
+  updateStudy,
+  type MeasurementEntry,
+  type MethodologyEntry,
+  type StudyFormValues,
+  type StudyIds,
+  type VariableOption,
+} from "./services/adminStudyService";
 import {
-  getContactRequests,
-  updateContactRequestStatus,
-  type ContactRequestRecord,
-} from "./services/contactService";
+  getDashboardSummary,
+  getMeasurementStatistics,
+  getStudiesByCountry,
+  getStudiesByYear,
+} from "./services/analyticsService";
+import ActivityHistoryTab from "./admin/ActivityHistoryTab";
+import CollaborationRequestsTab from "./admin/CollaborationRequestsTab";
+import UsersPermissionsTab from "./admin/UsersPermissionsTab";
 import { COUNTRY_TOPO_ID } from "./data/geo";
 import arcairLogo from "../assets/arcair-logo.png";
 import { useAsync } from "./hooks/useData";
@@ -75,6 +90,7 @@ type AdminTab =
   | "analytics"
   | "requests"
   | "users"
+  | "activity"
   | "settings";
 
 interface AdminDashboardProps {
@@ -90,11 +106,11 @@ const SIDEBAR_NAV: {
   Icon: React.FC<{ size?: number; className?: string }>;
 }[] = [
   { id: "dashboard", label: "Dashboard", Icon: BarChart2 },
-  { id: "research", label: "Research Data", Icon: BookOpen },
-  { id: "data", label: "Data Management", Icon: Database },
+  { id: "research", label: "Data Management", Icon: BookOpen },
   { id: "analytics", label: "Analytics", Icon: Activity },
-  { id: "requests", label: "Contact Requests", Icon: Mail },
-  { id: "users", label: "Users", Icon: Users },
+  { id: "requests", label: "Collaboration Requests", Icon: Mail },
+  { id: "users", label: "Users & Permissions", Icon: Users },
+  { id: "activity", label: "Activity History", Icon: Clock },
   { id: "settings", label: "Settings", Icon: Settings },
 ];
 
@@ -122,36 +138,6 @@ const VISITOR_COUNTRIES = [
   { country: "Other", visits: 1630, pct: 19 },
 ];
 
-const ADMIN_USERS = [
-  {
-    id: 1,
-    name: "Najoua ELFETHI",
-    email: "najoua.elfethi@um6p.ma",
-    role: "Data Scientist",
-    region: "Morocco",
-    status: "Active",
-    last: "Not available",
-  },
-  {
-    id: 2,
-    name: "Mohamed ELAOUAN",
-    email: "mohamed.elaouan@um6p.ma",
-    role: "Research Assistant",
-    region: "Morocco",
-    status: "Active",
-    last: "Not available",
-  },
-  {
-    id: 3,
-    name: "Naaima BEN KADOUR",
-    email: "naaima.benkadour@um6p.ma",
-    role: "Administrator",
-    region: "Morocco",
-    status: "Active",
-    last: "Not available",
-  },
-];
-
 const PIE_COLORS = [
   "#3B82F6",
   "#10B981",
@@ -173,10 +159,6 @@ const MEASUREMENT_CATEGORY_LABELS: Record<string, string> = {
 const ALL_MAP_COUNTRIES = Object.keys(COUNTRY_TOPO_ID).sort((a, b) =>
   a.localeCompare(b),
 );
-
-function kpiDelta(n: number, suffix = "") {
-  return `+${n}${suffix}`;
-}
 
 function Badge({
   children,
@@ -256,38 +238,67 @@ function parseCSV(text: string): { headers: string[]; rows: string[][] } {
 
 // ─── Sub-tabs ─────────────────────────────────────────────────────────────────
 
+// Single-line, truncated Y-axis label so long names never wrap or overlap
+function CountryTick({
+  x,
+  y,
+  payload,
+}: {
+  x?: number;
+  y?: number;
+  payload?: { value: string };
+}) {
+  const full = payload?.value ?? "";
+  const label = full.length > 22 ? `${full.slice(0, 21)}…` : full;
+  return (
+    <text
+      x={(x ?? 0) - 6}
+      y={y}
+      dy={4}
+      textAnchor="end"
+      fontSize={11}
+      fill="#475569"
+    >
+      <title>{full}</title>
+      {label}
+    </text>
+  );
+}
+
 function DashboardTab({ onNavigate }: { onNavigate: (t: AdminTab) => void }) {
-  const { data: stats } = useAsync(getDatasetStats, []);
-  const { data: countrySummaries } = useAsync(() => getCountrySummaries(), []);
+  const { data: summary } = useAsync(getDashboardSummary, []);
+  const { data: yearRows } = useAsync(getStudiesByYear, []);
+  const { data: countryRows } = useAsync(() => getStudiesByCountry(), []);
   const { data: measurementStats } = useAsync(getMeasurementStatistics, []);
 
-  // Studies per year: group all studies by yearTo
-  const studiesPerYear = useMemo(() => {
-    if (!countrySummaries) return [];
-    const map = new Map<number, number>();
-    for (const cs of countrySummaries) {
-      for (const s of cs.studies) {
-        const y = s.yearTo ?? s.yearFrom;
-        if (y && y >= 2000 && y <= 2025) map.set(y, (map.get(y) ?? 0) + 1);
-      }
-    }
-    return Array.from(map.entries())
-      .sort(([a], [b]) => a - b)
-      .map(([year, count]) => ({ year: String(year), count }));
-  }, [countrySummaries]);
+  const studiesPerYear = useMemo(
+    () =>
+      [...(yearRows ?? [])]
+        .sort((a, b) => a.year - b.year)
+        .map((row) => ({ year: String(row.year), count: row.total_studies })),
+    [yearRows],
+  );
 
-  // Top 8 countries
+  // Every known country is listed; countries missing from the API get 0
   const topCountries = useMemo(() => {
-    const countsByCountry = new Map(
-      (countrySummaries ?? []).map((c) => [c.name, c.studyCount]),
+    const counts = new Map<string, number>();
+    ALL_MAP_COUNTRIES.forEach((c) => counts.set(c, 0));
+    (countryRows ?? []).forEach((row) =>
+      counts.set(row.country, row.total_studies),
     );
-    return ALL_MAP_COUNTRIES.map((country) => ({
-      name: country.replace("Democratic Republic of ", "DR "),
-      count: countsByCountry.get(country) ?? 0,
-    }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 8);
-  }, [countrySummaries]);
+    return [...counts.entries()]
+      .map(([country, count]) => ({
+        name: country.replace("Democratic Republic of ", "DR "),
+        count,
+      }))
+      .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+  }, [countryRows]);
+
+  const [showAllCountries, setShowAllCountries] = useState(false);
+  const COLLAPSED_COUNTRY_LIMIT = 15;
+  const visibleCountries = showAllCountries
+    ? topCountries
+    : topCountries.slice(0, COLLAPSED_COUNTRY_LIMIT);
 
   // Pollutant distribution: measurements per category from the analytics API
   const pollutantDist = useMemo(
@@ -306,82 +317,51 @@ function DashboardTab({ onNavigate }: { onNavigate: (t: AdminTab) => void }) {
     [measurementStats],
   );
 
-  const publishedThisYear = useMemo(
-    () =>
-      (countrySummaries ?? []).reduce(
-        (acc, c) =>
-          acc +
-          c.studies.filter((s) => s.yearTo === 2024 || s.yearTo === 2025)
-            .length,
-        0,
-      ),
-    [countrySummaries],
-  );
-
-  const regions = useMemo(
-    () => new Set((countrySummaries ?? []).map((c) => c.region)).size,
-    [countrySummaries],
-  );
-
   return (
     <div className="space-y-6">
       {/* KPI grid */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
         <StatCard
           label="Total Studies"
-          value={stats?.studyCount ?? "Loading"}
-          delta={kpiDelta(12)}
+          value={summary?.total_studies ?? 0}
           Icon={BookOpen}
           iconBg="bg-blue-500"
         />
         <StatCard
           label="Countries Covered"
-          value={stats?.countryCount ?? "Loading"}
-          delta={kpiDelta(3)}
+          value={summary?.total_countries ?? 0}
           Icon={Globe}
           iconBg="bg-violet-500"
         />
         <StatCard
-          label="Regions Tracked"
-          value={regions || "Loading"}
-          delta={kpiDelta(7)}
-          Icon={MapPin}
-          iconBg="bg-pink-500"
-        />
-        <StatCard
           label="Pollutants Monitored"
-          value={stats?.pollutantCount ?? "Loading"}
-          delta={kpiDelta(2)}
+          value={summary?.total_pollution_variables ?? 0}
           Icon={FlaskConical}
           iconBg="bg-amber-500"
         />
         <StatCard
-          label="Active Researchers"
-          value={1456}
-          delta={kpiDelta(34)}
-          Icon={Users}
-          iconBg="bg-emerald-500"
+          label="Latest Publication Year"
+          value={summary?.latest_publication_year || 0}
+          Icon={Award}
+          iconBg="bg-rose-500"
         />
         <StatCard
-          label="Institutions"
-          value={387}
-          delta={kpiDelta(11)}
-          Icon={Building2}
-          iconBg="bg-cyan-500"
-        />
-        <StatCard
-          label="Pending Reviews"
-          value={43}
-          delta={kpiDelta(8)}
+          label="Oldest Publication Year"
+          value={summary?.oldest_publication_year || 0}
           Icon={Clock}
           iconBg="bg-orange-500"
         />
         <StatCard
-          label="Published This Year"
-          value={publishedThisYear || 421}
-          delta={kpiDelta(18, "%")}
-          Icon={Award}
-          iconBg="bg-rose-500"
+          label="Top Country"
+          value={summary?.top_country ?? 0}
+          Icon={MapPin}
+          iconBg="bg-pink-500"
+        />
+        <StatCard
+          label="Top Pollutant"
+          value={summary?.top_pollution_variable ?? 0}
+          Icon={Activity}
+          iconBg="bg-cyan-500"
         />
       </div>
 
@@ -484,8 +464,8 @@ function DashboardTab({ onNavigate }: { onNavigate: (t: AdminTab) => void }) {
         </div>
       </div>
 
-      {/* Bar chart + Quick actions */}
-      <div className="grid xl:grid-cols-[1.6fr_1fr] gap-4">
+      {/* Studies by country */}
+      <div>
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
           <div className="flex items-center justify-between mb-4">
             <div>
@@ -496,18 +476,25 @@ function DashboardTab({ onNavigate }: { onNavigate: (t: AdminTab) => void }) {
                 Studies by Country
               </h3>
             </div>
-            <button
-              onClick={() => onNavigate("research")}
-              className="text-[11px] text-blue-600 hover:underline"
-            >
-              View all
-            </button>
+            {topCountries.length > COLLAPSED_COUNTRY_LIMIT && (
+              <button
+                onClick={() => setShowAllCountries((v) => !v)}
+                className="text-[11px] text-blue-600 hover:underline"
+              >
+                {showAllCountries
+                  ? "Show less"
+                  : `View all countries (${topCountries.length})`}
+              </button>
+            )}
           </div>
-          <ResponsiveContainer width="100%" height={220}>
+          <ResponsiveContainer
+            width="100%"
+            height={Math.max(260, visibleCountries.length * 30)}
+          >
             <BarChart
-              data={topCountries}
+              data={visibleCountries}
               layout="vertical"
-              margin={{ left: 0, right: 20 }}
+              margin={{ left: 0, right: 30 }}
             >
               <CartesianGrid
                 strokeDasharray="3 3"
@@ -518,8 +505,9 @@ function DashboardTab({ onNavigate }: { onNavigate: (t: AdminTab) => void }) {
               <YAxis
                 dataKey="name"
                 type="category"
-                tick={{ fontSize: 10, fill: "#64748b" }}
-                width={90}
+                tick={<CountryTick />}
+                width={150}
+                interval={0}
               />
               <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} />
               <Bar
@@ -527,39 +515,21 @@ function DashboardTab({ onNavigate }: { onNavigate: (t: AdminTab) => void }) {
                 fill="#3B82F6"
                 radius={[0, 4, 4, 0]}
                 name="Studies"
-              />
+              >
+                {visibleCountries.map((row) => (
+                  <Cell
+                    key={row.name}
+                    fill={row.count === 0 ? "#CBD5E1" : "#3B82F6"}
+                  />
+                ))}
+                <LabelList
+                  dataKey="count"
+                  position="right"
+                  style={{ fontSize: 10, fill: "#64748b" }}
+                />
+              </Bar>
             </BarChart>
           </ResponsiveContainer>
-        </div>
-
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 flex flex-col gap-3">
-          <div>
-            <div className="text-[11px] uppercase tracking-widest text-slate-400">
-              Actions
-            </div>
-            <h3 className="font-semibold text-slate-800">Quick Actions</h3>
-          </div>
-          <button
-            onClick={() => onNavigate("data")}
-            className="w-full flex items-center gap-3 rounded-xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-white hover:bg-emerald-600 transition"
-          >
-            <Plus size={15} /> Add Study
-          </button>
-          <button
-            onClick={() => onNavigate("data")}
-            className="w-full flex items-center gap-3 rounded-xl border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50 transition"
-          >
-            <Upload size={15} /> Import CSV
-          </button>
-          <button className="w-full flex items-center gap-3 rounded-xl border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50 transition">
-            <Download size={15} /> Export Data
-          </button>
-          <button
-            onClick={() => onNavigate("analytics")}
-            className="w-full flex items-center gap-3 rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white hover:bg-blue-700 transition"
-          >
-            <BarChart2 size={15} /> Analytics
-          </button>
         </div>
       </div>
     </div>
@@ -568,11 +538,181 @@ function DashboardTab({ onNavigate }: { onNavigate: (t: AdminTab) => void }) {
 
 // ─── Research Data Tab ────────────────────────────────────────────────────────
 
+type TextField = Exclude<keyof StudyFormValues, "methodologies">;
+
+const CATEGORY_LABELS: Record<string, string> = {
+  bulk_pm: "Bulk PM",
+  wsia: "Water-soluble ions",
+};
+
+const categoryLabel = (category: string) =>
+  CATEGORY_LABELS[category] ??
+  category.replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase());
+
+/** Optional, collapsed-by-default list of pollutant values for one methodology. */
+function MeasurementsEditor({
+  variables,
+  items,
+  onChange,
+}: {
+  variables: VariableOption[];
+  items: MeasurementEntry[];
+  onChange: (items: MeasurementEntry[]) => void;
+}) {
+  const byCategory = useMemo(() => {
+    const groups = new Map<string, VariableOption[]>();
+    for (const v of variables) {
+      groups.set(v.category, [...(groups.get(v.category) ?? []), v]);
+    }
+    return [...groups.entries()].sort(([a], [b]) => a.localeCompare(b));
+  }, [variables]);
+
+  const patch = (index: number, change: Partial<MeasurementEntry>) =>
+    onChange(items.map((m, i) => (i === index ? { ...m, ...change } : m)));
+
+  const numberInput =
+    "w-full rounded-lg border border-slate-200 px-2 py-1.5 text-xs text-slate-700 outline-none focus:border-blue-400";
+
+  return (
+    <details className="rounded-lg border border-slate-200 bg-white p-2">
+      <summary className="cursor-pointer text-[11px] font-semibold uppercase tracking-widest text-slate-500">
+        Measurements ({items.length})
+      </summary>
+      <div className="mt-2 space-y-2">
+        {items.map((item, index) => (
+          <div
+            key={item.id ?? `new-${index}`}
+            className="space-y-1.5 rounded-lg bg-slate-50 p-2"
+          >
+            <div className="flex items-center gap-2">
+              <select
+                value={item.variableId}
+                onChange={(e) => {
+                  const picked = variables.find((v) => v.id === e.target.value);
+                  patch(index, {
+                    variableId: e.target.value,
+                    unit: item.unit || picked?.unit || "",
+                  });
+                }}
+                className="min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-700 outline-none focus:border-blue-400"
+              >
+                <option value="">Select pollutant…</option>
+                {byCategory.map(([category, list]) => (
+                  <optgroup key={category} label={categoryLabel(category)}>
+                    {list.map((v) => (
+                      <option key={v.id} value={v.id}>
+                        {v.name}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
+              <button
+                type="button"
+                title="Remove measurement"
+                onClick={() => onChange(items.filter((_, i) => i !== index))}
+                className="rounded-lg p-1 text-slate-400 hover:bg-red-50 hover:text-red-600"
+              >
+                <Trash2 size={13} />
+              </button>
+            </div>
+            <div className="grid grid-cols-5 gap-1.5">
+              {(
+                [
+                  ["mean", "Mean"],
+                  ["sd", "SD"],
+                  ["min", "Min"],
+                  ["max", "Max"],
+                ] as const
+              ).map(([key, label]) => (
+                <label key={key} className="block">
+                  <span className="text-[10px] uppercase tracking-widest text-slate-400">
+                    {label}
+                  </span>
+                  <input
+                    value={item[key]}
+                    inputMode="decimal"
+                    onChange={(e) => patch(index, { [key]: e.target.value })}
+                    className={numberInput}
+                  />
+                </label>
+              ))}
+              <label className="block">
+                <span className="text-[10px] uppercase tracking-widest text-slate-400">
+                  Unit
+                </span>
+                <input
+                  value={item.unit}
+                  onChange={(e) => patch(index, { unit: e.target.value })}
+                  className={numberInput}
+                />
+              </label>
+            </div>
+          </div>
+        ))}
+        <button
+          type="button"
+          onClick={() => onChange([...items, emptyMeasurement()])}
+          className="flex items-center gap-1 rounded-lg border border-blue-200 px-2 py-1 text-[11px] font-medium text-blue-600 hover:bg-blue-50"
+        >
+          <Plus size={12} /> Add measurement
+        </button>
+      </div>
+    </details>
+  );
+}
+
+/** One line per methodology row, numbered when a study has several. */
+function RecordList({
+  records,
+  pick,
+}: {
+  records: Study["records"];
+  pick: (record: Study["records"][number]) => string;
+}) {
+  if (records.length === 0) return <>-</>;
+  if (records.length === 1) {
+    return <span className="break-words">{pick(records[0]) || "-"}</span>;
+  }
+  return (
+    <ol className="space-y-1.5">
+      {records.map((record, index) => (
+        <li key={index} className="flex gap-1.5">
+          <span className="text-slate-400">{index + 1}.</span>
+          <span className="break-words">{pick(record) || "-"}</span>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+function distinct(values: string[]): string[] {
+  return [...new Set(values.map((v) => v.trim()).filter(Boolean))];
+}
+
+const STUDY_REGIONS = [
+  "Northern Africa",
+  "Western Africa",
+  "East & Central Africa",
+  "Southern Africa",
+];
+
 function ResearchDataTab() {
   const [search, setSearch] = useState("");
   const [countryFilter, setCountryFilter] = useState("All");
   const [yearFilter, setYearFilter] = useState("All");
   const [page, setPage] = useState(1);
+  const [reloadKey, setReloadKey] = useState(0);
+  const [editor, setEditor] = useState<{
+    id: string | null;
+    ids: StudyIds;
+    values: StudyFormValues;
+  } | null>(null);
+  const [deleting, setDeleting] = useState<Study | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [actionError, setActionError] = useState("");
+
+  const { data: places } = useAsync(getStudyPlaces, [reloadKey]);
 
   const { data: result, loading } = useAsync(
     () =>
@@ -587,10 +727,100 @@ function ResearchDataTab() {
         page,
         pageSize: 20,
       }),
-    [search, countryFilter, yearFilter, page],
+    [search, countryFilter, yearFilter, page, reloadKey],
   );
 
+  const emptyValues: StudyFormValues = {
+    source: "",
+    publicationYear: "",
+    dataProcessing: "",
+    title: "",
+    author: "",
+    journal: "",
+    identifier: "",
+    region: "",
+    country: "",
+    city: "",
+    siteDescription: "",
+    methodologies: [emptyMethodology()],
+  };
+
+  const noIds: StudyIds = {
+    articleId: null,
+    locationId: null,
+    methodologyIds: [],
+  };
+
+  const openCreate = () => {
+    setActionError("");
+    setEditor({ id: null, ids: noIds, values: emptyValues });
+  };
+
+  const openEdit = async (study: Study) => {
+    setActionError("");
+    setBusy(true);
+    try {
+      const { id, values, ...ids } = await getStudyDetail(study.id);
+      setEditor({ id, ids, values });
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : "Could not load study.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const saveEditor = async () => {
+    if (!editor) return;
+    if (!editor.values.source.trim()) {
+      setActionError("Source is required.");
+      return;
+    }
+    setBusy(true);
+    setActionError("");
+    try {
+      if (editor.id) {
+        await updateStudy(editor.id, editor.ids, editor.values);
+      } else {
+        await createStudy(editor.values);
+      }
+      setEditor(null);
+      setReloadKey((k) => k + 1);
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : "Could not save study.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (!deleting) return;
+    setBusy(true);
+    setActionError("");
+    try {
+      await deleteStudy(deleting.id);
+      setDeleting(null);
+      setReloadKey((k) => k + 1);
+    } catch (e) {
+      setActionError(
+        e instanceof Error ? e.message : "Could not delete study.",
+      );
+      // The study may already be gone (stale list): refresh so it disappears.
+      setReloadKey((k) => k + 1);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const allCountries = useMemo(() => ALL_MAP_COUNTRIES, []);
+
+  const [variables, setVariables] = useState<VariableOption[]>([]);
+  const editorOpen = editor !== null;
+  useEffect(() => {
+    if (!editorOpen || variables.length > 0) return;
+    getVariables()
+      .then(setVariables)
+      .catch(() => setVariables([]));
+  }, [editorOpen, variables.length]);
 
   const YEAR_OPTIONS = [
     "All",
@@ -608,6 +838,11 @@ function ResearchDataTab() {
 
   return (
     <div className="space-y-4">
+      {import.meta.env.MODE === "sandbox" && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-[12px] font-medium text-amber-700">
+          SANDBOX - changes here affect the disposable test database only.
+        </div>
+      )}
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex flex-wrap gap-3 items-center">
         <div className="flex items-center gap-2 bg-slate-50 rounded-xl px-3 py-2 flex-1 min-w-50]">
           <Search size={14} className="text-slate-400" />
@@ -658,7 +893,19 @@ function ResearchDataTab() {
         <span className="text-[12px] text-slate-500 ml-auto">
           {result?.total ?? "…"} records
         </span>
+        <button
+          onClick={openCreate}
+          className="flex items-center gap-1.5 rounded-xl bg-blue-600 px-3 py-2 text-[12px] font-medium text-white hover:bg-blue-700 transition"
+        >
+          <Plus size={14} /> Add study
+        </button>
       </div>
+
+      {actionError && !editor && !deleting && (
+        <div className="rounded-xl border border-red-100 bg-red-50 px-4 py-2.5 text-[12px] text-red-600">
+          {actionError}
+        </div>
+      )}
 
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
@@ -667,12 +914,14 @@ function ResearchDataTab() {
               <tr>
                 {[
                   "#",
-                  "Title",
-                  "Authors",
-                  "Country",
+                  "Source",
+                  "Year",
                   "Region",
-                  "Years",
-                  "Areas",
+                  "Country",
+                  "City",
+                  "Sampling period",
+                  "Methodology",
+                  "Actions",
                 ].map((h) => (
                   <th
                     key={h}
@@ -687,7 +936,7 @@ function ResearchDataTab() {
               {loading && (
                 <tr>
                   <td
-                    colSpan={7}
+                    colSpan={9}
                     className="py-12 text-center text-slate-400 text-sm"
                   >
                     Loading…
@@ -698,33 +947,62 @@ function ResearchDataTab() {
                 (result?.items ?? []).map((s, i) => (
                   <tr
                     key={s.id}
-                    className="border-b border-slate-50 hover:bg-blue-50/30 transition-colors"
+                    className="border-b border-slate-50 align-top hover:bg-blue-50/30 transition-colors"
                   >
                     <td className="py-2.5 px-4 text-slate-400 tabular-nums">
                       {(page - 1) * 20 + i + 1}
                     </td>
                     <td className="py-2.5 px-4 text-slate-700 max-w-65">
-                      <div className="truncate font-medium">{s.title}</div>
-                      <div className="text-[10px] text-slate-400 truncate">
-                        {s.journal}
+                      <div className="truncate font-medium" title={s.title}>
+                        {s.source}
                       </div>
                     </td>
-                    <td className="py-2.5 px-4 text-slate-500 max-w-35 truncate">
-                      {s.author}
+                    <td className="py-2.5 px-4 text-slate-600 tabular-nums">
+                      {s.publicationYear ?? "-"}
+                    </td>
+                    <td className="py-2.5 px-4 text-slate-500 whitespace-nowrap">
+                      {places?.get(s.id)?.region || "-"}
                     </td>
                     <td className="py-2.5 px-4 text-slate-600 whitespace-nowrap">
                       {s.country}
                     </td>
                     <td className="py-2.5 px-4 text-slate-500 whitespace-nowrap">
-                      {s.region}
+                      {places?.get(s.id)?.city || "-"}
                     </td>
-                    <td className="py-2.5 px-4 text-slate-600 whitespace-nowrap tabular-nums">
-                      {s.yearFrom === s.yearTo
-                        ? s.yearTo
-                        : `${s.yearFrom ?? "?"} – ${s.yearTo ?? "?"}`}
+                    <td className="py-2.5 px-4 text-slate-600 min-w-40 tabular-nums">
+                      <RecordList
+                        records={s.records}
+                        pick={(r) => r.samplingPeriod}
+                      />
                     </td>
-                    <td className="py-2.5 px-4 text-slate-500">
-                      {new Set(s.records.map((r) => r.studyArea)).size}
+                    <td className="py-2.5 px-4 text-slate-500 min-w-72 max-w-md">
+                      <RecordList
+                        records={s.records}
+                        pick={(r) => r.methodology}
+                      />
+                    </td>
+                    <td className="py-2.5 px-4">
+                      <div className="flex items-center gap-1">
+                        <button
+                          title="Edit study"
+                          disabled={busy}
+                          onClick={() => openEdit(s)}
+                          className="rounded-lg p-1.5 text-slate-400 hover:bg-blue-50 hover:text-blue-600 transition disabled:opacity-40"
+                        >
+                          <Pencil size={14} />
+                        </button>
+                        <button
+                          title="Delete study"
+                          disabled={busy}
+                          onClick={() => {
+                            setActionError("");
+                            setDeleting(s);
+                          }}
+                          className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600 transition disabled:opacity-40"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -756,6 +1034,316 @@ function ResearchDataTab() {
           </div>
         )}
       </div>
+
+      {editor && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
+          <div className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl max-h-[90vh] overflow-y-auto">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="font-semibold text-slate-800">
+                {editor.id ? "Edit study" : "Add study"}
+              </h3>
+              <button onClick={() => setEditor(null)} disabled={busy}>
+                <X size={16} className="text-slate-400" />
+              </button>
+            </div>
+            <div className="space-y-3">
+              {(
+                [
+                  [
+                    "Study",
+                    [
+                      ["source", "Source *", "e.g. Author et al. 2023"],
+                      ["publicationYear", "Publication year", "e.g. 2023"],
+                      ["dataProcessing", "Data processing", ""],
+                    ],
+                  ],
+                  [
+                    "Location",
+                    [
+                      ["region", "Region", "e.g. Northern Africa"],
+                      ["country", "Country", "e.g. Kenya"],
+                      ["city", "City / Study area", "e.g. Nairobi"],
+                      ["siteDescription", "Site description", "e.g. Urban - Residential"],
+                    ],
+                  ],
+                  [
+                    "Methodology & period",
+                    [],
+                  ],
+                  [
+                    "Article",
+                    [
+                      ["title", "Title", ""],
+                      ["author", "Authors", ""],
+                      ["journal", "Journal", ""],
+                      ["identifier", "DOI / Identifier", ""],
+                    ],
+                  ],
+                ] as [string, [TextField, string, string][]][]
+              ).map(([section, fields]) =>
+                section === "Methodology & period" ? (
+                  <div key={section} className="space-y-3">
+                    <div className="flex items-center justify-between pt-2">
+                      <h4 className="text-[11px] font-semibold uppercase tracking-widest text-blue-600">
+                        {section}
+                      </h4>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setEditor({
+                            ...editor,
+                            values: {
+                              ...editor.values,
+                              methodologies: [
+                                ...editor.values.methodologies,
+                                emptyMethodology(),
+                              ],
+                            },
+                          })
+                        }
+                        className="flex items-center gap-1 rounded-lg border border-blue-200 px-2 py-1 text-[11px] font-medium text-blue-600 hover:bg-blue-50"
+                      >
+                        <Plus size={12} /> Add methodology
+                      </button>
+                    </div>
+                    {editor.values.methodologies.map((entry, index) => {
+                      const update = (patch: Partial<MethodologyEntry>) =>
+                        setEditor({
+                          ...editor,
+                          values: {
+                            ...editor.values,
+                            methodologies: editor.values.methodologies.map(
+                              (m, i) => (i === index ? { ...m, ...patch } : m),
+                            ),
+                          },
+                        });
+                      const remove = () => {
+                        if (
+                          entry.id &&
+                          !window.confirm(
+                            "Remove this methodology? Its measurements are deleted when you save.",
+                          )
+                        ) {
+                          return;
+                        }
+                        const rest = editor.values.methodologies.filter(
+                          (_, i) => i !== index,
+                        );
+                        setEditor({
+                          ...editor,
+                          values: {
+                            ...editor.values,
+                            methodologies: rest.length
+                              ? rest
+                              : [emptyMethodology()],
+                          },
+                        });
+                      };
+                      const inputClass =
+                        "mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 outline-none focus:border-blue-400";
+                      const labelClass =
+                        "text-[11px] uppercase tracking-widest text-slate-400";
+                      return (
+                        <div
+                          key={entry.id ?? `new-${index}`}
+                          className="space-y-3 rounded-xl border border-slate-100 bg-slate-50/50 p-3"
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="text-[11px] font-semibold text-slate-500">
+                              Methodology {index + 1}
+                            </span>
+                            {(editor.values.methodologies.length > 1 ||
+                              entry.id) && (
+                              <button
+                                type="button"
+                                title="Remove methodology"
+                                onClick={remove}
+                                className="rounded-lg p-1 text-slate-400 hover:bg-red-50 hover:text-red-600"
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            )}
+                          </div>
+                          <label className="block">
+                            <span className={labelClass}>Methodology</span>
+                            <textarea
+                              rows={3}
+                              value={entry.methodology}
+                              onChange={(e) =>
+                                update({ methodology: e.target.value })
+                              }
+                              className={`${inputClass} resize-y`}
+                            />
+                          </label>
+                          <label className="block">
+                            <span className={labelClass}>Sampling period</span>
+                            <input
+                              value={entry.samplingPeriod}
+                              placeholder="e.g. 2006 - 2015"
+                              onChange={(e) =>
+                                update({ samplingPeriod: e.target.value })
+                              }
+                              className={inputClass}
+                            />
+                          </label>
+                          <div className="grid grid-cols-2 gap-3">
+                            <label className="block">
+                              <span className={labelClass}>Start year</span>
+                              <input
+                                value={entry.yearFrom}
+                                inputMode="numeric"
+                                placeholder="e.g. 2020"
+                                onChange={(e) =>
+                                  update({ yearFrom: e.target.value })
+                                }
+                                className={inputClass}
+                              />
+                            </label>
+                            <label className="block">
+                              <span className={labelClass}>End year</span>
+                              <input
+                                value={entry.yearTo}
+                                inputMode="numeric"
+                                placeholder="e.g. 2021"
+                                onChange={(e) =>
+                                  update({ yearTo: e.target.value })
+                                }
+                                className={inputClass}
+                              />
+                            </label>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                <div key={section} className="space-y-3">
+                  <h4 className="pt-2 text-[11px] font-semibold uppercase tracking-widest text-blue-600">
+                    {section}
+                  </h4>
+                  {fields.map(([key, label, placeholder]) => (
+                    <label key={key} className="block">
+                      <span className="text-[11px] uppercase tracking-widest text-slate-400">
+                        {label}
+                      </span>
+                      <input
+                        value={editor.values[key]}
+                        list={
+                          key === "country"
+                            ? "study-countries"
+                            : key === "region"
+                              ? "study-regions"
+                              : undefined
+                        }
+                        placeholder={placeholder}
+                        onChange={(e) =>
+                          setEditor({
+                            ...editor,
+                            values: { ...editor.values, [key]: e.target.value },
+                          })
+                        }
+                        className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 outline-none focus:border-blue-400"
+                      />
+                    </label>
+                  ))}
+                </div>
+                ),
+              )}
+              <div className="space-y-3">
+                <h4 className="pt-2 text-[11px] font-semibold uppercase tracking-widest text-blue-600">
+                  Measurements
+                </h4>
+                {editor.values.methodologies.map((entry, index) => (
+                  <div
+                    key={entry.id ?? `new-${index}`}
+                    className="space-y-2 rounded-xl border border-slate-100 bg-slate-50/50 p-3"
+                  >
+                    <span className="text-[11px] font-semibold text-slate-500">
+                      Methodology {index + 1}
+                    </span>
+                    <MeasurementsEditor
+                      variables={variables}
+                      items={entry.measurements}
+                      onChange={(measurements) =>
+                        setEditor({
+                          ...editor,
+                          values: {
+                            ...editor.values,
+                            methodologies: editor.values.methodologies.map(
+                              (m, i) =>
+                                i === index ? { ...m, measurements } : m,
+                            ),
+                          },
+                        })
+                      }
+                    />
+                  </div>
+                ))}
+              </div>
+              <datalist id="study-countries">
+                {allCountries.map((c) => (
+                  <option key={c} value={c} />
+                ))}
+              </datalist>
+              <datalist id="study-regions">
+                {STUDY_REGIONS.map((r) => (
+                  <option key={r} value={r} />
+                ))}
+              </datalist>
+            </div>
+            {actionError && (
+              <p className="mt-3 text-[12px] text-red-600">{actionError}</p>
+            )}
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                onClick={() => setEditor(null)}
+                disabled={busy}
+                className="rounded-xl border border-slate-200 px-4 py-2 text-[12px] text-slate-600 hover:bg-slate-50 disabled:opacity-40"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={saveEditor}
+                disabled={busy}
+                className="rounded-xl bg-blue-600 px-4 py-2 text-[12px] font-medium text-white hover:bg-blue-700 disabled:opacity-40"
+              >
+                {busy ? "Saving…" : editor.id ? "Save changes" : "Create study"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {deleting && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl">
+            <h3 className="font-semibold text-slate-800">Delete study?</h3>
+            <p className="mt-2 text-[12px] text-slate-500">
+              “{deleting.title || deleting.source}” and its related records
+              will be permanently removed.
+            </p>
+            {actionError && (
+              <p className="mt-3 text-[12px] text-red-600">{actionError}</p>
+            )}
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                onClick={() => setDeleting(null)}
+                disabled={busy}
+                className="rounded-xl border border-slate-200 px-4 py-2 text-[12px] text-slate-600 hover:bg-slate-50 disabled:opacity-40"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDelete}
+                disabled={busy}
+                className="rounded-xl bg-red-600 px-4 py-2 text-[12px] font-medium text-white hover:bg-red-700 disabled:opacity-40"
+              >
+                {busy ? "Deleting…" : "Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1294,256 +1882,6 @@ function AnalyticsTab() {
   );
 }
 
-// ─── Contact Requests Tab ───────────────────────────────────────────────────
-
-function ContactRequestsTab() {
-  const { data: requests, loading, error } = useAsync(getContactRequests, []);
-
-  const handleStatusUpdate = async (
-    id: number,
-    status: "Pending" | "Valid" | "Disapproved",
-  ) => {
-    try {
-      await updateContactRequestStatus(id, status);
-      window.location.reload();
-    } catch (requestError) {
-      console.error("Failed to update contact request status", requestError);
-    }
-  };
-
-  const badgeClass = (status: string) => {
-    switch (status) {
-      case "Valid":
-        return "bg-emerald-100 text-emerald-700";
-      case "Disapproved":
-        return "bg-red-100 text-red-700";
-      default:
-        return "bg-amber-100 text-amber-700";
-    }
-  };
-
-  return (
-    <div className="space-y-4">
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
-        <h3 className="font-semibold text-slate-800">Contact Requests</h3>
-        <p className="mt-1 text-[12px] text-slate-500">
-          Review new public inquiries, collaboration requests, and research
-          submissions.
-        </p>
-      </div>
-
-      {loading && (
-        <div className="rounded-2xl border border-slate-100 bg-white p-6 text-sm text-slate-500">
-          Loading requests…
-        </div>
-      )}
-
-      {error && (
-        <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-          {error.message || "Unable to load contact requests."}
-        </div>
-      )}
-
-      {!loading && !error && (!requests || requests.length === 0) && (
-        <div className="rounded-2xl border border-slate-100 bg-white p-6 text-sm text-slate-500">
-          No contact requests have been submitted yet.
-        </div>
-      )}
-
-      {!loading && !error && requests && requests.length > 0 && (
-        <div className="space-y-4">
-          {requests.map((request: ContactRequestRecord) => (
-            <div
-              key={request.id}
-              className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm"
-            >
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                <div className="space-y-2">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h4 className="text-base font-semibold text-slate-800">
-                      {request.subject}
-                    </h4>
-                    <span
-                      className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${badgeClass(request.status)}`}
-                    >
-                      {request.status}
-                    </span>
-                  </div>
-                  <div className="grid gap-2 text-[12px] text-slate-600 md:grid-cols-2">
-                    <div>
-                      <span className="font-medium text-slate-800">Name:</span>{" "}
-                      {request.fullName}
-                    </div>
-                    <div>
-                      <span className="font-medium text-slate-800">Email:</span>{" "}
-                      {request.email}
-                    </div>
-                    <div>
-                      <span className="font-medium text-slate-800">
-                        Institution:
-                      </span>{" "}
-                      {request.institution}
-                    </div>
-                    <div>
-                      <span className="font-medium text-slate-800">Type:</span>{" "}
-                      {request.requestType}
-                    </div>
-                    <div className="md:col-span-2">
-                      <span className="font-medium text-slate-800">
-                        Submitted:
-                      </span>{" "}
-                      {new Date(request.createdAt).toLocaleString()}
-                    </div>
-                  </div>
-                  <div className="rounded-xl bg-slate-50 p-3 text-[12px] text-slate-700">
-                    <div className="font-medium text-slate-800 mb-1">
-                      Message
-                    </div>
-                    <p className="whitespace-pre-wrap">{request.message}</p>
-                  </div>
-                  {request.details && (
-                    <div className="rounded-xl bg-slate-50 p-3 text-[12px] text-slate-700">
-                      <div className="font-medium text-slate-800 mb-1">
-                        Additional details
-                      </div>
-                      <p className="whitespace-pre-wrap">{request.details}</p>
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex flex-col gap-2 min-w-42.5">
-                  <button
-                    onClick={() => handleStatusUpdate(request.id, "Valid")}
-                    className="rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700 transition"
-                  >
-                    Approve / Validate
-                  </button>
-                  <button
-                    onClick={() =>
-                      handleStatusUpdate(request.id, "Disapproved")
-                    }
-                    className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-100 transition"
-                  >
-                    Disapprove
-                  </button>
-                  <button
-                    onClick={() => handleStatusUpdate(request.id, "Pending")}
-                    className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-700 hover:bg-amber-100 transition"
-                  >
-                    Set Pending
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─── Users Tab ────────────────────────────────────────────────────────────────
-
-function UsersTab() {
-  const [invite, setInvite] = useState("");
-  const [invited, setInvited] = useState(false);
-
-  return (
-    <div className="space-y-4">
-      {/* Invite */}
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
-        <h3 className="font-semibold text-slate-800 mb-3">
-          Invite Team Member
-        </h3>
-        {invited && (
-          <div className="mb-3 flex items-center gap-2 rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-2.5 text-sm text-emerald-700">
-            <CheckCircle size={14} /> Invite sent to <strong>{invite}</strong>
-          </div>
-        )}
-        <div className="flex gap-3">
-          <input
-            value={invite}
-            onChange={(e) => setInvite(e.target.value)}
-            placeholder="researcher@um6p.ma"
-            className="flex-1 rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition"
-          />
-          <button
-            onClick={() => {
-              setInvited(true);
-              setTimeout(() => {
-                setInvited(false);
-                setInvite("");
-              }, 3000);
-            }}
-            disabled={!invite.includes("@")}
-            className="px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 disabled:opacity-40 transition"
-          >
-            Send Invite
-          </button>
-        </div>
-        <p className="text-[11px] text-slate-400 mt-2">
-          Invited users will receive a UM6P SSO sign-in link.
-        </p>
-      </div>
-
-      {/* Users table */}
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-        <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-          <h3 className="font-semibold text-slate-800">Team Members</h3>
-          <span className="text-[12px] text-slate-400">
-            {ADMIN_USERS.length} users
-          </span>
-        </div>
-        <table className="min-w-full text-[12px]">
-          <thead className="bg-slate-50">
-            <tr>
-              {["Name", "Email", "Role", "Region", "Status", "Last Active"].map(
-                (h) => (
-                  <th
-                    key={h}
-                    className="text-left py-3 px-4 text-[10px] uppercase tracking-widest text-slate-400 font-medium"
-                  >
-                    {h}
-                  </th>
-                ),
-              )}
-            </tr>
-          </thead>
-          <tbody>
-            {ADMIN_USERS.map((u) => (
-              <tr
-                key={u.id}
-                className="border-t border-slate-50 hover:bg-slate-50/60"
-              >
-                <td className="py-3 px-4 font-medium text-slate-800">
-                  {u.name}
-                </td>
-                <td className="py-3 px-4 text-slate-500">{u.email}</td>
-                <td className="py-3 px-4 text-slate-600">{u.role}</td>
-                <td className="py-3 px-4 text-slate-500">{u.region}</td>
-                <td className="py-3 px-4">
-                  <Badge
-                    color={
-                      u.status === "Active"
-                        ? "bg-emerald-100 text-emerald-700"
-                        : u.status === "Pending"
-                          ? "bg-amber-100 text-amber-700"
-                          : "bg-slate-100 text-slate-500"
-                    }
-                  >
-                    {u.status}
-                  </Badge>
-                </td>
-                <td className="py-3 px-4 text-slate-400">{u.last}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
 // ─── Settings Tab ─────────────────────────────────────────────────────────────
 
 function SettingsTab() {
@@ -1609,8 +1947,9 @@ export default function AdminDashboard({
     research: "Research Data",
     data: "Data Management",
     analytics: "Analytics",
-    requests: "Contact Requests",
-    users: "Users",
+    requests: "Collaboration Requests",
+    users: "Users & Permissions",
+    activity: "Activity History",
     settings: "Settings",
   };
 
@@ -1690,9 +2029,7 @@ export default function AdminDashboard({
         {/* Header */}
         <header className="bg-white border-b border-slate-100 px-6 py-4 flex items-center justify-between shrink-0 shadow-sm">
           <div>
-            <div className="text-[10px] uppercase tracking-widest text-slate-400">
-              Admin · {TAB_LABELS[activeTab]}
-            </div>
+            
             <h1 className="text-lg font-semibold text-slate-900 mt-0.5">
               {TAB_LABELS[activeTab]}
             </h1>
@@ -1719,8 +2056,9 @@ export default function AdminDashboard({
           {activeTab === "research" && <ResearchDataTab />}
           {activeTab === "data" && <DataManagementTab />}
           {activeTab === "analytics" && <AnalyticsTab />}
-          {activeTab === "requests" && <ContactRequestsTab />}
-          {activeTab === "users" && <UsersTab />}
+          {activeTab === "requests" && <CollaborationRequestsTab />}
+          {activeTab === "users" && <UsersPermissionsTab />}
+          {activeTab === "activity" && <ActivityHistoryTab />}
           {activeTab === "settings" && <SettingsTab />}
         </div>
       </main>

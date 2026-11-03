@@ -499,7 +499,7 @@ export function canonicalAreaName(raw: string): string {
   name = name.replace(/\s+city$/i, "");
   name = name.replace(/^City of\s+/i, "");
   if (
-    /^Pretoria(\s*[-–]| west)/i.test(name) ||
+    /^Pretoria(\s*[--]| west)/i.test(name) ||
     name === "University of Pretoria"
   ) {
     return "Pretoria";
@@ -856,10 +856,14 @@ export async function queryStudies(
   const data = await getPublicMapData();
 
   const studies: Study[] = [];
+  const seenIds = new Set<string>();
 
   for (const country of data.countries) {
     for (const city of country.cities) {
       for (const apiStudy of city.studies) {
+        // The same study is listed under every city it covers; keep one row.
+        if (seenIds.has(apiStudy.id)) continue;
+        seenIds.add(apiStudy.id);
         const { yearFrom, yearTo } = getStudyYears(apiStudy);
 
         studies.push({

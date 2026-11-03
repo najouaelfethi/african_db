@@ -257,9 +257,9 @@ const countryFlagUrl = (name: string): string | null => {
 
 const BUCKETS = [
   { min: 0, max: 0, label: "No data", fill: "#c4cdd9", stroke: "#a0adbe" },
-  { min: 1, max: 2, label: "1 – 2", fill: "#a3b7f0", stroke: "#7e99e0" },
-  { min: 3, max: 8, label: "3 – 8", fill: "#6d8fe6", stroke: "#4d70d6" },
-  { min: 9, max: 20, label: "9 – 20", fill: "#3d5dd8", stroke: "#2a46c0" },
+  { min: 1, max: 2, label: "1 - 2", fill: "#a3b7f0", stroke: "#7e99e0" },
+  { min: 3, max: 8, label: "3 - 8", fill: "#6d8fe6", stroke: "#4d70d6" },
+  { min: 9, max: 20, label: "9 - 20", fill: "#3d5dd8", stroke: "#2a46c0" },
   { min: 21, max: Infinity, label: "21 +", fill: "#1e36a8", stroke: "#142690" },
 ];
 

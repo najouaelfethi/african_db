@@ -63,7 +63,7 @@ function RangeInput({
       <div className="flex justify-between items-center">
         <span className="text-[11px] text-muted-foreground font-medium">{label}</span>
         <span className="text-[11px] text-primary font-semibold" style={{ fontFamily: "'DM Mono', monospace" }}>
-          {valueMin} – {valueMax}
+          {valueMin} - {valueMax}
         </span>
       </div>
       <div className="flex gap-2">

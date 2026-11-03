@@ -19,14 +19,14 @@ export interface PollutantInfo {
   key: string;
   /** Display name, e.g. "PM2.5", "Black carbon (BC)", "ΣPAHs". */
   name: string;
+  /** Reporting unit, e.g. "µg/m³", "ng/m³", "ppb". */
+  unit: string;
   /**
    * Dataset column group:
    * "Bulk PM" | "Carbonaceous aerosols" | "Water soluble inorganic aerosols" |
    * "Trace metals" | "Atmospheric gases" | organics groups
    */
   category: string;
-  /** Reporting unit, e.g. "µg/m³", "ng/m³", "ppb". */
-  unit: string;
 }
 
 /**
