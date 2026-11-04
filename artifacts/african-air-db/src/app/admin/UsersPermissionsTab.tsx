@@ -4,6 +4,7 @@ import { useAsync } from "../hooks/useData";
 import {
   createInvitation,
   createRole,
+  createUniqueRoleSlug,
   deleteRole,
   deleteUser,
   getInviteDomains,
@@ -262,7 +263,10 @@ function UsersPanel() {
 
 function RolesPanel() {
   const [reload, setReload] = useState(0);
-  const { data: roles, error } = useAsync(listRoles, [reload]);
+  const { data: roles, error, loading: rolesLoading } = useAsync(
+    listRoles,
+    [reload],
+  );
   const { data: permissions } = useAsync(listPermissions, []);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [granted, setGranted] = useState<string[]>([]);
@@ -270,7 +274,7 @@ function RolesPanel() {
     null,
   );
   const [busy, setBusy] = useState(false);
-  const [form, setForm] = useState({ name: "", slug: "", description: "" });
+  const [form, setForm] = useState({ name: "", description: "" });
 
   const selected: Role | undefined = roles?.items.find(
     (r) => r.id === selectedId,
@@ -344,28 +348,47 @@ function RolesPanel() {
           className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 space-y-2"
           onSubmit={(e) => {
             e.preventDefault();
+            const name = form.name.trim().replace(/\s+/g, " ");
+            if (!roles) {
+              setNotice({
+                ok: false,
+                text: "Roles could not be loaded. Please try again.",
+              });
+              return;
+            }
+            const normalizedName = name.toLowerCase();
+            if (
+              roles.items.some(
+                (role) =>
+                  role.name.trim().replace(/\s+/g, " ").toLowerCase() ===
+                  normalizedName,
+              )
+            ) {
+              setNotice({
+                ok: false,
+                text: `A role named "${name}" already exists.`,
+              });
+              return;
+            }
             void run(async () => {
               await createRole({
-                name: form.name.trim(),
-                slug: form.slug.trim(),
+                name,
+                slug: createUniqueRoleSlug(
+                  name,
+                  roles.items.map((role) => role.slug),
+                ),
                 description: form.description.trim() || undefined,
               });
-              setForm({ name: "", slug: "", description: "" });
+              setForm({ name: "", description: "" });
             }, "Role created.");
           }}
         >
           <h3 className="font-semibold text-slate-800">New role</h3>
           <input
             className={`${inputCls} w-full`}
-            placeholder="Name (e.g. Data Reviewer)"
+            placeholder="Role Name"
             value={form.name}
             onChange={(e) => setForm({ ...form, name: e.target.value })}
-          />
-          <input
-            className={`${inputCls} w-full`}
-            placeholder="slug (e.g. data-reviewer)"
-            value={form.slug}
-            onChange={(e) => setForm({ ...form, slug: e.target.value })}
           />
           <input
             className={`${inputCls} w-full`}
@@ -374,7 +397,7 @@ function RolesPanel() {
             onChange={(e) => setForm({ ...form, description: e.target.value })}
           />
           <button
-            disabled={busy || !form.name.trim() || !form.slug.trim()}
+            disabled={busy || rolesLoading || !roles || !form.name.trim()}
             className={primaryBtn}
           >
             Create role
@@ -390,7 +413,6 @@ function RolesPanel() {
         )}
         {!selected ? (
           <p className="text-sm text-slate-500">
-            Select a role to view and edit its permissions.
           </p>
         ) : (
           <>
@@ -636,7 +658,7 @@ function InvitationsPanel() {
                   <Pill tone={statusTone(i.status)}>{i.status}</Pill>
                 </td>
                 <td className="py-3 px-4 text-slate-500">
-                  {i.invited_by_email ?? "—"}
+                  {i.invited_by_email ?? "-"}
                 </td>
                 <td className="py-3 px-4 text-slate-400">
                   {new Date(i.created_at).toLocaleString()}

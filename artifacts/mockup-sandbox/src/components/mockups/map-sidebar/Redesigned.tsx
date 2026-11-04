@@ -93,7 +93,7 @@ const moroccoStudies = [
     "Atmospheric Environment",
     2019,
     2022,
-    "Marrakech — urban background",
+    "Marrakech - urban background",
     { PM25: 36, PM10: 72, NO2: 21 },
   ),
   makeStudy(

@@ -47,7 +47,7 @@ const EVENT_LABELS: Record<string, string> = {
 };
 
 function label(event: string | null): string {
-  if (!event) return "—";
+  if (!event) return "-";
   return (
     EVENT_LABELS[event] ??
     event
@@ -188,11 +188,11 @@ export default function ActivityHistoryTab() {
                     {label(a.event)}
                   </td>
                   <td className="py-3 px-4 text-slate-500">
-                    {a.resource_name ?? a.resource_type ?? "—"}
+                    {a.resource_name ?? a.resource_type ?? "-"}
                   </td>
                   <td className="py-3 px-4">
                     <Pill tone={a.status === "FAILED" ? "red" : "green"}>
-                      {a.status ?? "—"}
+                      {a.status ?? "-"}
                     </Pill>
                   </td>
                 </tr>

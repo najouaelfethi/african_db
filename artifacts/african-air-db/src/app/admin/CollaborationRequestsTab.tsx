@@ -74,7 +74,7 @@ export default function CollaborationRequestsTab() {
               >
                 {f.label}
                 <span className="ml-1.5 text-[11px] opacity-80">
-                  {data?.counts[f.id] ?? "–"}
+                  {data?.counts[f.id] ?? "-"}
                 </span>
               </button>
             ))}

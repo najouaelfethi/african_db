@@ -2458,7 +2458,7 @@ export default function App() {
                                     <div>
                                       <dt>Study years</dt>
                                       <dd>
-                                        {selectedMapStudy.yearFrom ?? "—"}
+                                        {selectedMapStudy.yearFrom ?? "-"}
                                         {selectedMapStudy.yearTo &&
                                         selectedMapStudy.yearTo !==
                                           selectedMapStudy.yearFrom

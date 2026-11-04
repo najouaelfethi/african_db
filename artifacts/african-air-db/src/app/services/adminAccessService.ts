@@ -101,10 +101,10 @@ export interface ActivityEntry {
   details: Record<string, unknown> | null;
 }
 
-async function failure(response: Response): Promise<Error> {
-  if (response.status === 401 || response.status === 403) {
-    return new Error("You do not have permission to perform this action.");
-  }
+async function failure(
+  response: Response,
+  conflictMessage?: string,
+): Promise<Error> {
   try {
     const body = (await response.json()) as { detail?: unknown };
     if (typeof body.detail === "string") return new Error(body.detail);
@@ -115,6 +115,17 @@ async function failure(response: Response): Promise<Error> {
   } catch {
     // Non-JSON error body: use the status fallback below.
   }
+  if (response.status === 401) {
+    return new Error("Your session is no longer valid. Please sign in again.");
+  }
+  if (response.status === 403) {
+    return new Error(
+      "Your account is signed in, but is not allowed to perform this action. Ask an administrator to verify your role permissions.",
+    );
+  }
+  if (response.status === 409 && conflictMessage) {
+    return new Error(conflictMessage);
+  }
   return new Error(`Request failed with status ${response.status}`);
 }
 
@@ -122,6 +133,7 @@ async function request<T>(
   path: string,
   method = "GET",
   body?: unknown,
+  conflictMessage?: string,
 ): Promise<T> {
   const response = await authFetch(path, {
     method,
@@ -132,7 +144,7 @@ async function request<T>(
         }
       : {}),
   });
-  if (!response.ok) throw await failure(response);
+  if (!response.ok) throw await failure(response, conflictMessage);
   if (response.status === 204) return undefined as T;
   return (await response.json()) as T;
 }
@@ -161,11 +173,37 @@ export const deleteUser = (id: string) =>
 
 export const listRoles = () =>
   request<Page<Role>>(`/api/admin/roles${query({ limit: 100 })}`);
+export function createUniqueRoleSlug(
+  name: string,
+  existingSlugs: readonly string[],
+): string {
+  const base =
+    name
+      .normalize("NFKD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "") || "role";
+  const existing = new Set(existingSlugs.map((slug) => slug.toLowerCase()));
+  let slug = base;
+  let suffix = 2;
+  while (existing.has(slug)) {
+    slug = `${base}-${suffix}`;
+    suffix += 1;
+  }
+  return slug;
+}
 export const createRole = (body: {
   name: string;
   slug: string;
   description?: string;
-}) => request<Role>("/api/admin/roles", "POST", body);
+}) =>
+  request<Role>(
+    "/api/admin/roles",
+    "POST",
+    body,
+    "A role with this name or identifier already exists. Review the roles and try again.",
+  );
 export const deleteRole = (id: string) =>
   request<void>(`/api/admin/roles/${id}`, "DELETE");
 export const replaceRolePermissions = (id: string, permissionIds: string[]) =>
